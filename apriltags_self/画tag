@@ -1,0 +1,3 @@
+sudo apt-get install libcairo2-dev  
+TagFamilies.cpp修改字典
+ids[i]选择tag 按顺序

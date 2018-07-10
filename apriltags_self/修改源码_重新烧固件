@@ -1,0 +1,22 @@
+sudo apt-get remove gcc-arm-none-eabi
+sudo apt-get autoremove
+sudo add-apt-repository ppa:team-gcc-arm-embedded/ppa
+sudo apt-get update
+sudo apt-get install gcc-arm-embedded
+sudo apt-get install libc6-i386
+sudo apt-get install python2.7 python-dev python-pip
+sudo apt-get install libusb-1.0-0 libusb-1.0-0-dev
+sudo apt-get install python-gtksourceview2
+sudo pip install numpy pyserial==2.7 pyusb==1.0.0b2 Pillow
+sudo apt-get install git
+然后获取固件源码：
+git clone --recursive https://github.com/openmv/openmv.git
+cd openmv/udev
+sudo cp 50-openmv.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo adduser (username) dialout
+这个username就是ubuntu的用户名
+最后编译:
+修改你需要的部分
+cd openmv/src
+make
