@@ -1,0 +1,150 @@
+#include "pointmatcher/PointMatcher.h"
+#include <cassert>
+#include <iostream>
+#include "boost/filesystem.hpp"
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_cloud.h>
+#include <pcl/common/transforms.h>
+#include <pcl/visualization/pcl_visualizer.h>
+using namespace std;
+void transform_test( pcl::PointCloud<pcl::PointXYZ>::Ptr &match_cloud,
+                     pcl::PointCloud<pcl::PointXYZ>::Ptr &transformed_cloud,  Eigen::Matrix4f transform_1)
+{
+    for (size_t i = 0; i < match_cloud->points.size (); ++i)
+    {
+
+        transformed_cloud->points[i].x=match_cloud->points[i].x*transform_1(0,0)
+                      +match_cloud->points[i].y*transform_1(0,1)
+                      +match_cloud->points[i].z*transform_1(0,2)
+                      +transform_1(0,3);
+        transformed_cloud->points[i].y=match_cloud->points[i].x*transform_1(1,0)
+                      +match_cloud->points[i].y*transform_1(1,1)
+                      +match_cloud->points[i].z*transform_1(1,2)
+                      +transform_1(1,3);
+        transformed_cloud->points[i].z=match_cloud->points[i].x*transform_1(2,0)
+                      +match_cloud->points[i].y*transform_1(2,1)
+                      +match_cloud->points[i].z*transform_1(2,2)
+                      +transform_1(2,3);
+    }
+
+}
+PointMatcher<float>::DataPoints PcdtoPointMatcherCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr &source_cloud)
+{
+   PointMatcher<float>::DataPoints::Labels featLabels,descLabels;
+   const size_t count=source_cloud->size();
+   featLabels.push_back(PointMatcher<float>::DataPoints::Label("x", 1));
+   featLabels.push_back(PointMatcher<float>::DataPoints::Label("y", 1));
+   featLabels.push_back(PointMatcher<float>::DataPoints::Label("z", 1));
+   featLabels.push_back(PointMatcher<float>::DataPoints::Label("pad", 1));
+   // create cloud
+   const unsigned pointCount(count);
+   PointMatcher<float>::DataPoints cloud(featLabels, descLabels, pointCount);
+   cloud.getFeatureViewByName("pad").setConstant(1);
+   for(size_t i=0;i<source_cloud->size();i++)
+   {
+   cloud.features(0,i) = source_cloud->points[i].x;
+   cloud.features(1,i) = source_cloud->points[i].y;
+   cloud.features(2,i) = source_cloud->points[i].z;
+   }
+   return cloud;
+}
+pcl::PointCloud<pcl::PointXYZ> PointMatcherCloudtoPcd(PointMatcher<float>::DataPoints source_cloud)
+{
+    pcl::PointCloud<pcl::PointXYZ> cloud;
+    int count = source_cloud.features.cols();
+        cloud.resize(count);
+        cloud.width = 1;
+        cloud.height = count;
+        cloud.is_dense = false;
+    for(size_t i=0;i<source_cloud.features.cols();i++)
+    {
+        cloud.points[i].x=source_cloud.features(0,i);
+        cloud.points[i].y=source_cloud.features(1,i);
+        cloud.points[i].z=source_cloud.features(2,i);
+    }
+    return cloud;
+}
+
+int main(int argc, char *argv[])
+{
+
+
+    typedef PointMatcher<float> PM;
+    typedef PM::DataPoints DP;
+
+    std::string source_filename("/home/ysl/qt_project/build-pcl_test_cmake-unknown-Debug/A/3/tower2.pcd");
+    std::string target_filename("/home/ysl/qt_project/build-pcl_test_cmake-unknown-Debug/A/3/tower1.pcd");
+    std::string point_source_filename("/home/ysl/qt_project/build-pcl_test_cmake-unknown-Debug/未命名文件夹/cvs_point/2018-05-28-09-46-22_point.pcd");
+    std::string point_target_filename("/home/ysl/qt_project/build-pcl_test_cmake-unknown-Debug/未命名文件夹/cvs_point/2018-06-04-09-41-55_point.pcd");
+    std::string yaml_filename("/home/ysl/qt_project/build-pcl_test_cmake-unknown-Debug/A/icp_scale.yaml");//2018-06-04-09-41-55_point
+    // Load point clouds
+    /*const DP ref(DP::load(target_filename));
+    const DP data(DP::load(source_filename));*/
+    pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud_t(new pcl::PointCloud<pcl::PointXYZ>());
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::io::loadPCDFile(source_filename, *source_cloud);
+    pcl::io::loadPCDFile(target_filename, *transformed_cloud);
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr point_source_cloud(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr point_target_cloud(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::io::loadPCDFile(point_source_filename, *point_source_cloud);
+    pcl::io::loadPCDFile(point_target_filename, *point_target_cloud);
+    DP ref;
+    DP data;
+    data=PcdtoPointMatcherCloud(source_cloud);
+    ref=PcdtoPointMatcherCloud(transformed_cloud);
+
+    PM::ICP icp_test;
+    //cout<<ref.features(0,0)<<" "<<ref.features(1,0)<<" "<<ref.features(2,0)<<endl;
+    // See the implementation of setDefault() to create a custom ICP algorithm
+    //icp_test.setDefault();
+    // load YAML config
+    ifstream ifs(yaml_filename);
+
+    icp_test.loadFromYaml(ifs);
+    // Compute the transformation to express data in ref
+    PM::TransformationParameters T = icp_test(data, ref);
+    // transform_test(source_cloud,source_cloud_t,T);
+    pcl::transformPointCloud (*source_cloud, *source_cloud_t, T);
+
+     // Visualization
+     printf(  "\nPoint cloud colors :  white  = original point cloud\n"
+         "                        red  = transformed point cloud\n");
+     pcl::visualization::PCLVisualizer viewer ("Matrix transformation example");
+
+      // Define R,G,B colors for the point cloud
+     pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> source_cloud_color_handler (source_cloud_t, 230, 20, 20);
+     // We add the point cloud to the viewer and pass the color handler
+     viewer.addPointCloud (source_cloud_t, source_cloud_color_handler, "original_cloud1");
+     pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> source_cloud_color_handler1 (source_cloud, 255, 0, 255);
+     // We add the point cloud to the viewer and pass the color handler
+     viewer.addPointCloud (source_cloud, source_cloud_color_handler1, "original_cloud");
+
+     pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> transformed_cloud_color_handler (transformed_cloud, 255, 255, 255); // Red
+     viewer.addPointCloud (transformed_cloud, transformed_cloud_color_handler, "transformed_cloud");
+
+     viewer.setBackgroundColor(0.05, 0.05, 0.05, 0); // Setting background to a dark grey
+     viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "original_cloud");
+     viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "transformed_cloud");
+     viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "original_cloud1");
+
+    cout << "Final transformation:" << endl << T << endl;
+    //cout << "Final residual error: " << error << endl;
+    viewer.spin();
+    viewer.removePointCloud("original_cloud");
+    pcl::transformPointCloud (*point_source_cloud, *point_source_cloud, T);
+
+    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> point_source_cloud_color_handler (point_source_cloud, 230, 20, 20);
+    // We add the point cloud to the viewer and pass the color handler
+    viewer.addPointCloud (point_source_cloud, point_source_cloud_color_handler, "point_source");
+    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> point_target_cloud_color_handler (point_target_cloud, 255, 255, 255);
+    // We add the point cloud to the viewer and pass the color handler
+    viewer.addPointCloud (point_target_cloud, point_target_cloud_color_handler, "point_target");
+
+    viewer.spin();
+
+    return 0;
+}
+

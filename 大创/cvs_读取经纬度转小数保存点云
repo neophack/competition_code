@@ -1,0 +1,242 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/io/pcd_io.h>
+#include <boost/thread/thread.hpp>
+#include <pcl/common/common_headers.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/io/pcd_io.h>
+#include <liblas/liblas.hpp>
+#include <ogr_spatialref.h>
+#include <ogr_geometry.h>
+#include <opencv2/opencv.hpp>
+
+//经纬度转utm坐标
+int convert_lonlat_utm(const pcl::PointXYZ &lon_lat_coord, pcl::PointXYZ &utm_coord)
+{
+    OGRSpatialReference *RefSource = new OGRSpatialReference;
+    RefSource->SetWellKnownGeogCS("WGS84");
+
+    OGRSpatialReference *RefTarget = new OGRSpatialReference;
+    RefTarget = RefSource->CloneGeogCS();
+    int utmzone = lon_lat_coord.x/ 6 + 31;
+    RefTarget->SetProjCS("UTM(WGS84) in northern hemisphere.");
+    RefTarget->SetUTM(utmzone, TRUE);
+    OGRCoordinateTransformation *poTransform = OGRCreateCoordinateTransformation(RefSource, RefTarget);
+
+    double tempX = lon_lat_coord.x;
+    double tempY = lon_lat_coord.y;
+    double tempZ = lon_lat_coord.z;
+
+    poTransform->Transform(1, &tempX, &tempY, &tempZ);
+    utm_coord.x=(tempX);
+    utm_coord.y=(tempY);
+    utm_coord.z=(tempZ);
+
+    return utmzone;
+}
+
+//utm转经纬度
+void convert_utm_lonlat(const pcl::PointXYZ &utm_coord, const int &utmzone, pcl::PointXYZ &lon_lat_coord)
+{
+    //建立投影坐标系到经纬度坐标系的转换
+    OGRSpatialReference *RefSource = new OGRSpatialReference;
+    RefSource->SetWellKnownGeogCS("WGS84");
+    RefSource->SetProjCS("UTM(WGS84) in northern hemisphere.");
+    RefSource->SetUTM(utmzone, TRUE);
+    OGRSpatialReference *RefTarget = new OGRSpatialReference;
+    RefTarget = RefSource->CloneGeogCS();
+    OGRCoordinateTransformation *poTranform = OGRCreateCoordinateTransformation(RefSource, RefTarget);
+
+    OGRPoint *poPoint = new OGRPoint();
+    double tempx = utm_coord.x;
+    double tempy = utm_coord.y;
+    double tempz = utm_coord.z;
+
+    poTranform->Transform(1, &tempx, &tempy, NULL);
+    lon_lat_coord = pcl::PointXYZ(tempx, tempy, tempz);
+}
+double convertStringToDouble(const std::string &s)
+{
+    double val;
+    std::strstream ss;
+    ss << s;
+    ss >> val;
+    return val;
+}
+std::vector<std::string> split(const std::string &s, const std::string &seperator){
+  std::vector<std::string> result;
+  typedef std::string::size_type string_size;
+  string_size i = 0;
+
+  while(i != s.size()){
+    //找到字符串中首个不等于分隔符的字母；
+    int flag = 0;
+    while(i != s.size() && flag == 0){
+      flag = 1;
+      for(string_size x = 0; x < seperator.size(); ++x)
+       if(s[i]==seperator[x])
+       {
+           ++i;
+           flag=0;
+           break;
+       }
+    }
+
+    //找到又一个分隔符，将两个分隔符之间的字符串取出；
+    flag = 0;
+    string_size j = i;
+    while(j != s.size() && flag == 0){
+      for(string_size x = 0; x < seperator.size(); ++x)
+      if(s[j] == seperator[x]){
+          flag = 1;
+          break;
+      }
+      if(flag == 0)
+            ++j;
+    }
+    if(i != j){
+      result.push_back(s.substr(i, j-i));
+      i = j;
+    }
+  }
+  return result;
+}
+double string_get(std::string lineStr)
+{
+
+    double du;
+    double fen;
+    double miao;
+    std::vector<std::string> v = split(lineStr, "°\'\"\r"); //可按多个字符来分隔;
+
+
+    du=convertStringToDouble(v[0]);
+    fen=convertStringToDouble(v[1]);
+    miao=convertStringToDouble(v[2]);
+
+    return (du + (fen + (miao / 60)) / 60);
+}
+std::vector<cv::Point2d> DuFenMiaoToLonLat(std::vector<std::string> lineArray)
+{
+    std::vector<cv::Point2d> point_lon_lat;
+    for(int i=0;i<lineArray.size()/2;i++)
+    {
+        cv::Point2d point;
+        point.x=string_get(lineArray[2*i]);
+        point.y=string_get(lineArray[2*i+1]);
+        point_lon_lat.push_back(point);
+    }
+    return point_lon_lat;
+}
+//构造球体点云
+void ConsSphereCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr basic_cloud_in,pcl::PointCloud<pcl::PointXYZRGB>::Ptr basic_cloud_ptr)
+{
+    float radius = 1;
+    for(int k=0;k<basic_cloud_in->points.size();k++){
+    for (float angle1 = 0.0; angle1 <= 180.0; angle1 += 45.0)
+    {
+        for (float angle2 = 0.0; angle2 <= 360.0; angle2 += 45.0)
+        {
+            pcl::PointXYZRGB basic_point;
+            pcl::PointXYZRGB basic_point1;
+
+            basic_point1.x=basic_cloud_in->points[k].x;
+            basic_point1.y=basic_cloud_in->points[k].y;
+            basic_point1.z=basic_cloud_in->points[k].z;
+
+            basic_point1.r=255;
+            basic_point1.g=1;
+            basic_point1.b=1;
+
+            basic_point.x = basic_cloud_in->points[k].x+radius * sinf(pcl::deg2rad(angle1)) * cosf(pcl::deg2rad(angle2));
+            basic_point.y = basic_cloud_in->points[k].y+radius * sinf(pcl::deg2rad(angle1)) * sinf(pcl::deg2rad(angle2));
+            basic_point.z = basic_cloud_in->points[k].z+radius * cosf(pcl::deg2rad(angle1));
+            basic_point.r=255;
+            basic_point.g=255;
+            basic_point.b=1;
+            basic_cloud_ptr->points.push_back(basic_point);
+            basic_cloud_ptr->points.push_back(basic_point1);
+
+        }
+    }
+
+  }
+    basic_cloud_ptr->width = (int)basic_cloud_ptr->points.size();
+    basic_cloud_ptr->height = 1;
+}
+int main()
+{
+    // 写文件
+    /*  ofstream outFile;
+    outFile.open("1.csv", ios::out); // 打开模式可省略
+    outFile << "name" << ',' << "age" << ',' << "hobby" << endl;
+    outFile << "Mike" << ',' << 18 << ',' << "paiting" << endl;
+    outFile << "Tom" << ',' << 25 << ',' << "football" << endl;
+    outFile << "Jack" << ',' << 21 << ',' << "music" << endl;
+    outFile.close();
+*/
+    // 读文件
+    ifstream inFile("3.csv", ios::in);
+    std::string lineStr;
+    pcl::PointXYZ lon_lat_coord;
+    pcl::PointXYZ utm_coord;
+
+    //113.1038568,23.67708879,12.6423
+    /*  lon_lat_coord.x=113.1038568;
+    lon_lat_coord.y=23.67708879;
+    lon_lat_coord.z=12.6423;
+    convert_lonlat_utm(lon_lat_coord,utm_coord);
+    cout<<utm_coord.x<<" "<<utm_coord.y<<" "<<utm_coord.z<<endl;*/
+    std::vector<std::string> lineArray;
+    while (std::getline(inFile, lineStr))
+    {
+        // 打印整行字符串
+        //cout << lineStr << endl;
+        // 存成二维表结构
+        std::stringstream ss(lineStr);
+        std::string str;
+        // 按照逗号分隔
+        while (std::getline(ss, str, ','))
+            lineArray.push_back(str);
+    }
+    std::vector<cv::Point2d> point_lon_lat;
+    point_lon_lat=DuFenMiaoToLonLat(lineArray);
+
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr basic_cloud_ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+    int count = lineArray.size()/2;
+    pointCloudPtr->resize(count);
+    pointCloudPtr->width = count;
+    pointCloudPtr->height = 1;
+    pointCloudPtr->is_dense = false;
+    for(int i=0;i<lineArray.size()/2;i++)
+    {
+        lon_lat_coord.x=point_lon_lat[i].x;
+        lon_lat_coord.y=point_lon_lat[i].y;
+        lon_lat_coord.z=10;
+        convert_lonlat_utm(lon_lat_coord,utm_coord);
+
+        pointCloudPtr->points[i].x = utm_coord.x;
+        pointCloudPtr->points[i].y = utm_coord.y;
+        pointCloudPtr->points[i].z = utm_coord.z;
+        pointCloudPtr->points[i].r = 1;
+        pointCloudPtr->points[i].g = 0;
+        pointCloudPtr->points[i].b = 0;
+    }
+    ConsSphereCloud(pointCloudPtr,basic_cloud_ptr);
+      pcl::io::savePCDFileASCII("point.pcd",*basic_cloud_ptr);
+
+    pcl::io::savePCDFileASCII("point_one.pcd",*pointCloudPtr);
+    return 0;
+}
+

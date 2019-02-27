@@ -1,0 +1,21 @@
+void remove_re_point(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud)
+{
+    int number=0;
+    pcl::PointCloud<pcl::PointXYZ>::iterator itr= cloud->points.begin();;
+    pcl::PointCloud<pcl::PointXYZ>::iterator itr1;
+    pcl::PointCloud<pcl::PointXYZ>::iterator itr_b;
+    while(itr !=--cloud->points.end())
+    {
+        itr1=itr;
+        itr_b=++itr1;
+        if(itr->x==itr_b->x&&itr->y==itr_b->y&&itr->z==itr_b->z)
+        {
+            itr = cloud->points.erase(itr);
+            number++;
+        }
+        else
+            ++itr;
+    }
+    std::cout<<number<<std::endl;
+
+}

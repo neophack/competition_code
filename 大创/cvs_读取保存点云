@@ -1,0 +1,134 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/io/pcd_io.h>
+#include <liblas/liblas.hpp>
+#include <ogr_spatialref.h>
+#include <ogr_geometry.h>
+
+typedef pcl::PointXYZRGB Point;
+
+using namespace std;
+
+//经纬度转utm坐标
+int convert_lonlat_utm(const pcl::PointXYZ &lon_lat_coord, pcl::PointXYZ &utm_coord)
+{
+    OGRSpatialReference *RefSource = new OGRSpatialReference;
+    RefSource->SetWellKnownGeogCS("WGS84");
+
+    OGRSpatialReference *RefTarget = new OGRSpatialReference;
+    RefTarget = RefSource->CloneGeogCS();
+    int utmzone = lon_lat_coord.x/ 6 + 31;
+    RefTarget->SetProjCS("UTM(WGS84) in northern hemisphere.");
+    RefTarget->SetUTM(utmzone, TRUE);
+    OGRCoordinateTransformation *poTransform = OGRCreateCoordinateTransformation(RefSource, RefTarget);
+
+    double tempX = lon_lat_coord.x;
+    double tempY = lon_lat_coord.y;
+    double tempZ = lon_lat_coord.z;
+
+    poTransform->Transform(1, &tempX, &tempY, &tempZ);
+    utm_coord.x=(tempX);
+    utm_coord.y=(tempY);
+    utm_coord.z=(tempZ);
+
+    return utmzone;
+}
+
+//utm转经纬度
+void convert_utm_lonlat(const pcl::PointXYZ &utm_coord, const int &utmzone, pcl::PointXYZ &lon_lat_coord)
+{
+    //建立投影坐标系到经纬度坐标系的转换
+    OGRSpatialReference *RefSource = new OGRSpatialReference;
+    RefSource->SetWellKnownGeogCS("WGS84");
+    RefSource->SetProjCS("UTM(WGS84) in northern hemisphere.");
+    RefSource->SetUTM(utmzone, TRUE);
+    OGRSpatialReference *RefTarget = new OGRSpatialReference;
+    RefTarget = RefSource->CloneGeogCS();
+    OGRCoordinateTransformation *poTranform = OGRCreateCoordinateTransformation(RefSource, RefTarget);
+
+    OGRPoint *poPoint = new OGRPoint();
+    double tempx = utm_coord.x;
+    double tempy = utm_coord.y;
+    double tempz = utm_coord.z;
+
+    poTranform->Transform(1, &tempx, &tempy, NULL);
+    lon_lat_coord = pcl::PointXYZ(tempx, tempy, tempz);
+}
+double convertStringToDouble(const string &s)
+{
+    double val;
+    std::strstream ss;
+    ss << s;
+    ss >> val;
+    return val;
+}
+
+int main()
+{
+    // 写文件
+  /*  ofstream outFile;
+    outFile.open("1.csv", ios::out); // 打开模式可省略
+    outFile << "name" << ',' << "age" << ',' << "hobby" << endl;
+    outFile << "Mike" << ',' << 18 << ',' << "paiting" << endl;
+    outFile << "Tom" << ',' << 25 << ',' << "football" << endl;
+    outFile << "Jack" << ',' << 21 << ',' << "music" << endl;
+    outFile.close();
+*/
+    // 读文件
+    ifstream inFile("1.csv", ios::in);
+    string lineStr;
+    pcl::PointXYZ lon_lat_coord;
+    pcl::PointXYZ utm_coord;
+
+//113.1038568,23.67708879,12.6423
+  /*  lon_lat_coord.x=113.1038568;
+    lon_lat_coord.y=23.67708879;
+    lon_lat_coord.z=12.6423;
+    convert_lonlat_utm(lon_lat_coord,utm_coord);
+    cout<<utm_coord.x<<" "<<utm_coord.y<<" "<<utm_coord.z<<endl;*/
+    vector<string> lineArray;
+    while (getline(inFile, lineStr))
+    {
+        // 打印整行字符串
+       // cout << lineStr << endl;
+        // 存成二维表结构
+        stringstream ss(lineStr);
+        string str;
+        // 按照逗号分隔
+        while (getline(ss, str, ','))
+         lineArray.push_back(str);
+    }
+    pcl::PointCloud<Point>::Ptr pointCloudPtr(new pcl::PointCloud<Point>);
+    int count = lineArray.size()/3;
+    pointCloudPtr->resize(count);
+    pointCloudPtr->width = count;
+    pointCloudPtr->height = 1;
+    pointCloudPtr->is_dense = false;
+    for(int i=0;i<lineArray.size()/3;i++)
+    {
+        lon_lat_coord.x=convertStringToDouble(lineArray[3*i]);
+        lon_lat_coord.y=convertStringToDouble(lineArray[3*i+1]);
+        lon_lat_coord.z=convertStringToDouble(lineArray[3*i+2]);
+        convert_lonlat_utm(lon_lat_coord,utm_coord);
+        pointCloudPtr->points[i].x = utm_coord.x;
+        pointCloudPtr->points[i].y = utm_coord.y;
+        pointCloudPtr->points[i].z = utm_coord.z;
+        pointCloudPtr->points[i].r = 1;
+        pointCloudPtr->points[i].g = 0;
+        pointCloudPtr->points[i].b = 0;
+    }
+
+    pcl::io::savePCDFileASCII("test.pcd",*pointCloudPtr);
+
+    return 0;
+}
+

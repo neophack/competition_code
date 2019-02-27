@@ -1,0 +1,50 @@
+#include <pcl/filters/random_sample.h>
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/common/transforms.h>
+
+#define PI 3.1415
+
+#include <vector>
+
+typedef pcl::PointXYZ PointT;
+typedef pcl::PointCloud<PointT> PointCloudT;
+
+int main(){
+    PointCloudT::Ptr cloud_in (new PointCloudT), cloud_out (new PointCloudT);
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer( new pcl::visualization::PCLVisualizer ("Viewer"));
+
+    pcl::io::loadPCDFile("2018-05-28-09-46-22_tower.pcd", *cloud_in);
+
+    std::cerr << *cloud_in << std::endl;
+
+    pcl::RandomSample<PointT> rs;
+    rs.setInputCloud(cloud_in);
+    //设置输出点的数量
+    rs.setSample(1024);
+
+    //下采样并输出到cloud_out
+    rs.filter(*cloud_out);
+
+    //提取采样点的index
+    //std::vector<int> indices;
+    //rs.filter(indices);
+
+    std::cerr << *cloud_out << std::endl;
+
+    //可视化
+    viewer->addPointCloud(cloud_out, "cloud_out");
+
+    //pcl::visualization::PointCloudColorHandlerCustom<PointT> red(cloud_in, 0, 255, 255);
+   // viewer->addPointCloud(rotateABit(cloud_in), red, "cloud_in");
+
+    while(!viewer->wasStopped()){
+        viewer->spinOnce();
+    }
+    return (1);
+}
+
+
+
+

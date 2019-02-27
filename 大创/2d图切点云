@@ -1,0 +1,592 @@
+//
+// Created by ethan on 18-6-26.
+//
+#include <iostream>
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/common/common.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/io/pcd_io.h>
+#include <liblas/liblas.hpp>
+#include <pcl/visualization/point_cloud_color_handlers.h>
+#include <iostream>
+// PCL specific includes
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/console/print.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <iostream>
+#include <pcl/point_types.h>
+#include <pcl/filters/passthrough.h>
+
+#include <pcl/ModelCoefficients.h>
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <fstream>
+#include <iosfwd>
+#include <math.h>
+#include <iomanip>
+#include"stdlib.h"
+#include "iostream"
+#include "string"
+#include <iostream>
+#include <pcl/visualization/cloud_viewer.h>
+#include<pcl/io/pcd_io.h>
+#include<pcl/point_types.h>
+#include <pcl/conversions.h>
+#include <pcl/features/normal_3d.h>
+#include <boost/thread/thread.hpp>
+#include <pcl/common/common_headers.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/console/parse.h>
+#include <pcl/filters/statistical_outlier_removal.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/common/impl/io.hpp>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <pcl/common/transforms.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/io/pcd_io.h>
+#include <liblas/liblas.hpp>
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/common/common.h>
+#include <opencv2/opencv.hpp>
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui/highgui.hpp"
+
+typedef pcl::PointXYZI Point;
+
+using namespace std;
+
+#define PI 3.1415926
+
+class LineFinder
+{
+private:
+    std::vector<cv::Vec4i> lines;  // 直线对应的点参数向量
+    double deltaRho;  //步长
+    double deltaTheta;
+    int minVote;  // 判断是直线的最小投票数
+    double minLength;  // 判断是直线的最小长度
+    double maxGap;  // 同一条直线上点之间的距离容忍度
+public:
+    LineFinder() : deltaRho(1), deltaTheta(PI/180),
+        minVote(10), minLength(0.), maxGap(0.) {}  //初始化
+
+    void setAccResolution(double dRho, double dTheta)   // 设置步长
+    {
+        deltaRho= dRho;
+        deltaTheta= dTheta;
+    }
+
+    void setMinVote(int minv)  // 设置最小投票数
+    {
+        minVote= minv;
+    }
+
+    void setLineLengthAndGap(double length, double gap)  // 设置最小线段长度和线段间距容忍度
+    {
+        minLength= length;
+        maxGap= gap;
+    }
+
+
+    std::vector<cv::Vec4i> findLines(cv::Mat& binary)  //寻找线段
+    {
+        lines.clear();
+        cv::HoughLinesP(binary,lines, deltaRho, deltaTheta, minVote,minLength, maxGap);
+        return lines;
+    }
+
+    void drawDetectedLines(cv::Mat &image, cv::Scalar color=cv::Scalar(255,255,255))  // 画线段
+    {
+        std::vector<cv::Vec4i>::const_iterator it2=lines.begin();
+        while (it2!=lines.end())
+        {
+            cv::Point pt1((*it2)[0],(*it2)[1]);
+            cv::Point pt2((*it2)[2],(*it2)[3]);
+            cv::line( image, pt1, pt2, color);
+            ++it2;
+        }
+    }
+};
+
+/*void viewer(string name,pcl::PointCloud<Point>::Ptr pointCloudPtr,string type_)
+{
+    pcl::visualization::PCLVisualizer p (name);
+    p.setBackgroundColor (1, 1, 1);
+
+    std::cerr << "PointCloudColorHandlerGenericField demo." << std::endl;
+    pcl::visualization::PointCloudColorHandlerGenericField<Point> handler_z (pointCloudPtr, type_);
+
+    p.addPointCloud (pointCloudPtr, handler_z, "cloud_z");
+    p.spin ();
+    p.removePointCloud ("cloud_z");
+
+
+    //p.addCoordinateSystem (0.1);
+
+    // Demonstrate usage of spinOnce()
+    p.resetStoppedFlag();
+    p.removePointCloud ("cloud");
+    p.spin ();
+    std::cerr << "ok" << std::endl;
+}*/
+float get_distance1(cv::Vec8i line1,cv::Vec8i line2){
+
+    float k1 = line1[4];
+    float k2 = line2[4];
+
+    float b1 = line1[3] - k1*line1[2];
+    float b2 = line2[3] - k2*line2[2];
+    float distance;
+    return  distance = abs(b1 - b2) / sqrt(k1*k1 + 1);
+}
+float get_distance(cv::Point p1,cv::Point p2){
+
+    float distance=sqrt(pow(p1.x-p2.x,2) + pow(p1.y-p2.y,2));
+    return distance;
+}
+cv::Point point_yx(cv::Point p1,int n){
+    p1.x = p1.x+n;
+    p1.y = p1.y+n;
+    return p1;
+}
+cv::Point point_zs(cv::Point p1,int n){
+    p1.x = p1.x-n;
+    p1.y = p1.y-n;
+    return p1;
+}
+cv::Point point_ys(cv::Point p1,int n){
+    p1.x = p1.x+n;
+    p1.y = p1.y-n;
+    return p1;
+}
+cv::Point point_zx(cv::Point p1,int n){
+    p1.x = p1.x-n;
+    p1.y = p1.y+n;
+    return p1;
+}
+cv::Point get_center(cv::Point P[4]){
+    cv::Point pc1 ,pc2,pc;
+    pc1.x=(P[0].x+P[1].x)/2;
+    pc1.y=(P[0].y+P[1].y)/2;
+    pc2.x=(P[2].x+P[3].x)/2;
+    pc2.y=(P[2].y+P[3].y)/2;
+    pc.x=(pc1.x+pc2.x)/2;
+    pc.y=(pc1.y+pc2.y)/2;
+    return pc;
+}
+void point_list(cv::Point P[4],cv::Point P_s[4]){
+    cv::Point pc1 ,pc2,pc;
+    pc1.x=(P[0].x+P[1].x)/2;
+    pc1.y=(P[0].y+P[1].y)/2;
+    pc2.x=(P[2].x+P[3].x)/2;
+    pc2.y=(P[2].y+P[3].y)/2;
+    pc.x=(pc1.x+pc2.x)/2;
+    pc.y=(pc1.y+pc2.y)/2;
+    /* P[0]=pt1;
+            P[1]=pt2;
+            P[2]=pt11;
+            P[3]=pt22;*/
+    for(int i=0;i<4;i++)
+    {
+
+        if((P[i].x<pc.x)&&(P[i].y<pc.y))
+            P_s[0]=P[i];
+        if((P[i].x>pc.x)&&(P[i].y<pc.y))
+            P_s[1]=P[i];
+        if((P[i].x>pc.x)&&(P[i].y>pc.y))
+            P_s[2]=P[i];
+        if((P[i].x<pc.x)&&(P[i].y>pc.y))
+            P_s[3]=P[i];
+    }
+
+}
+int main(int argc,char **argv)
+{
+#if(0)
+    pcl::PointCloud<Point>::Ptr pointCloudPtr (new pcl::PointCloud<Point>);
+    pcl::PointCloud<Point>::Ptr pointCloudPtr_in (new pcl::PointCloud<Point>);
+
+    //pcl::PointCloud<Point>::Ptr pointCloudPtr_xyz (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloudPtr_xyz (new pcl::PointCloud<pcl::PointXYZ>);
+
+    pcl::PointCloud<Point>::Ptr pointCloudPtr_o (new pcl::PointCloud<Point>);
+
+    pcl::PCDReader pcd;
+    if (pcd.read ("123.pcd", *pointCloudPtr_in) == -1)
+        return (-1);
+    //viewer("1",pointCloudPtr,"intensity");
+
+    pointCloudPtr_o->points.resize(pointCloudPtr_in->size());
+
+    pcl::StatisticalOutlierRemoval<Point> sor;// 创建滤波器对象
+    sor.setInputCloud(pointCloudPtr_in);                        //设置滤波的点云
+    sor.setMeanK(3);                                //设置在进行统计时考虑查询点邻近点数
+    sor.setStddevMulThresh(20.0);                    //设置判断是否为离群点的阈值
+    sor.filter(*pointCloudPtr);                    //执行滤波处理保存内点到cloud_filtered
+
+    pcl::PointXYZ min;//用于存放三个轴的最小值
+    pcl::PointXYZ max;//用于存放三个轴的最大值
+    pcl::copyPointCloud(*pointCloudPtr, *pointCloudPtr_xyz);
+
+    pcl::getMinMax3D(*pointCloudPtr_xyz,min,max);
+
+    pcl::PassThrough<Point> pass;
+    pass.setInputCloud (pointCloudPtr_in);
+    pass.setFilterFieldName ("z");
+    pass.setFilterLimits ((max.z-min.z)*0.5, max.z);
+    //pass.setFilterLimitsNegative (true);true输出滤去部分
+    pass.filter (*pointCloudPtr_o);
+    //cv::Mat M(int(max.y-min.y),int(max.x-min.x),CV_8UC1);
+    cv::Mat M = cv::Mat::zeros(int(max.y-min.y),int(max.x-min.x),CV_8UC1);
+
+    int i=0,j=0;
+    for (size_t k = 0; k < pointCloudPtr_o->points.size (); ++k) //显示所有的点
+    {
+        j=int(pointCloudPtr_o->points[k].x-min.x);
+        i=int(pointCloudPtr_o->points[k].y-min.y);
+        if((M.at<uchar>(i,j)+20)<=255)
+            M.at<uchar>(i,j)=M.at<uchar>(i,j)+20;
+    }
+    cv::imwrite("1.jpg",M);
+#elif(1)
+    cv::Mat M=cv::imread("1.jpg",0);
+#endif
+    cv::Mat M2,M3;
+    cv::Mat element;
+    M2 =cv::Mat::zeros(cv::Size(M.cols,M.rows),CV_8UC1);
+    M3=M.clone();
+
+    //cv::equalizeHist(M, M);
+    cv::imshow("first",M);
+    element=cv::getStructuringElement(cv::MORPH_CROSS,cv::Size(3,3));
+    //morphologyEx(img,img2,MORPH_CLOSE,element);
+
+    cv::dilate(M,M,element);
+    cv::threshold(M,M,10,255,cv::THRESH_TRIANGLE);
+    //cv::medianBlur(M, M, 3);
+    cv::morphologyEx(M,M,cv::MORPH_CLOSE,element);
+    int g_CannyThred =150;
+    cv::Canny(M, M, (double)g_CannyThred, (double)((g_CannyThred + 1) * (2/100.0)), 3);
+
+    // cv::Canny (M,M,10,350);  //边缘检测
+    LineFinder finder;
+    finder.setMinVote (50);
+    finder.setLineLengthAndGap (100,200);
+    std::vector<cv::Vec4i> lines1;  // 直线对应的点参数向量
+    std::vector<cv::Vec8i> lines_k;
+    lines1=finder.findLines (M);
+    std::cout<<lines1.size ()<<std::endl;
+    std::vector<cv::Vec4i>::const_iterator it2=lines1.begin();
+    while (it2!=lines1.end())
+    {
+        cv::Point pt1((*it2)[0],(*it2)[1]);
+        cv::Point pt2((*it2)[2],(*it2)[3]);
+        int K_num = int((pt2.y-pt1.y)/(pt2.x-pt1.x));
+        float b = (*it2)[3] - K_num*(*it2)[2];
+
+        cv::Vec8i l_k;
+        l_k[0]=(*it2)[0];
+        l_k[1]=(*it2)[1];
+        l_k[2]=(*it2)[2];
+        l_k[3]=(*it2)[3];
+        l_k[4]=K_num;
+        l_k[5]=b;
+
+        lines_k.push_back(l_k);
+        ++it2;
+    }
+    std::vector<cv::Vec8i> lines_k_c(lines_k);
+    std::vector<cv::Vec8i> lines_need;
+    std::vector<int> lines_need_k;
+
+    //lines_k_c=lines_k;
+    std::vector<cv::Vec8i>::iterator it3=lines_k.begin();
+    //std::vector<int>::iterator it_k=lines_need_k.begin();
+
+    int size =lines_k_c.size();
+    int num_=0;
+    int K_nums=0;
+    int num_i=0;
+    int num_j=0;
+    while (it3!=lines_k.end())
+    {
+        std::vector<cv::Vec8i>::iterator it4=lines_k_c.begin();
+        num_=0;
+        for (int K=size;K>0;K--)
+        {
+            if(*it3!=*it4){
+                float k1 = (*it3)[4];
+                float k2 = (*it4)[4];
+
+                float b1 = (*it3)[3] - k1*(*it3)[2];
+                float b2 = (*it4)[3] - k2*(*it4)[2];
+                float distance;
+                distance = abs(b1 - b2) / sqrt(k1*k1 + 1);
+                if(distance<10&&
+                        abs((*it3)[4]-(*it4)[4])<1)
+                {
+                    lines_need.push_back(*it4);
+                    lines_k_c.erase(it4);
+                    num_++;
+                    K_nums++;
+                }
+                if(num_>=2)
+                {
+                    lines_need.pop_back();
+                    num_=1;
+                }
+            }
+            ++it4;
+            ++num_j;
+            size =lines_k_c.size();
+        }
+        lines_need_k.push_back(K_nums);
+        K_nums=0;
+        ++it3;
+        ++num_i;
+    }
+
+    std::vector<cv::Vec8i>::const_iterator it5=lines_need.begin();
+    std::vector<int>::const_iterator it_ks=lines_need_k.begin();
+
+    std::vector<cv::Vec8i> lines_need_;
+    // std::vector<cv::Vec8i> lines_need_;
+
+    /* cv::Point pt1((*it5)[0],(*it5)[1]);
+    cv::Point pt2((*it5)[2],(*it5)[3]);
+    cv::line( M2, pt1, pt2,cv::Scalar(255,255,255));
+    std::cout<<lines_need.size()<<std::endl;*/
+
+    while (it5!=lines_need.end())
+    {
+        //std::cout<<(*it_ks)<<std::endl;
+
+        if(*it_ks>=1)
+        {
+            lines_need_.push_back(*it5);
+            /*cv::Point pt1((*it5)[0],(*it5)[1]);
+                cv::Point pt2((*it5)[2],(*it5)[3]);
+                cv::line( M2, pt1, pt2,cv::Scalar(255,255,255));*/
+        }
+        ++it_ks;
+        ++it5;
+    }
+    std::vector<cv::Vec8i> lines_need_n(lines_need_);
+    std::vector<cv::Vec8i> lines_dist;
+    std::vector<cv::Vec8i> lines_dist4;
+
+    int size_=lines_need_.size();
+    bool flag =false;
+    std::vector<cv::Vec8i>::iterator it3_n=lines_need_.begin();
+
+    while(it3_n!=lines_need_.end())
+    {    std::vector<cv::Vec8i>::iterator it4_n=lines_need_n.begin();
+
+        while(it4_n!=lines_need_n.end())
+        {  if(*it3_n==*it4_n||flag){
+                flag=true;
+                if(*it3_n!=*it4_n&&flag){
+                    if(abs((*it3_n)[4]-(*it4_n)[4])<1)
+                    {
+                        float k1 = (*it3_n)[4];
+                        float k2 = (*it4_n)[4];
+
+                        float b1 = (*it3_n)[3] - k1*(*it3_n)[2];
+                        float b2 = (*it4_n)[3] - k2*(*it4_n)[2];
+                        float distance;
+                        distance = abs(b1 - b2) / sqrt(k1*k1 + 1);
+                        cv::Vec8i l_d;
+                        l_d[0]=(*it3_n)[0];
+                        l_d[1]=(*it3_n)[1];
+                        l_d[2]=(*it3_n)[2];
+                        l_d[3]=(*it3_n)[3];
+                        l_d[4]=(*it3_n)[4];
+                        l_d[5]=(*it3_n)[5];
+                        l_d[6]=distance;
+
+                        lines_dist.push_back(l_d);
+                        lines_dist4.push_back(*it4_n);
+                    }
+
+                }
+
+            }
+            ++it4_n;
+
+        }
+        flag =false;
+        ++it3_n;
+    }
+    bool flag1=false;
+    int flag2=0;
+    int count=0;
+    int MaxCount=0;
+    std::vector<cv::Vec8i>::iterator it_z3=lines_dist.begin();
+    std::vector<cv::Vec8i>::iterator it_zf=lines_dist.begin();
+    std::vector<cv::Vec8i> lines_dist_c(lines_dist);
+
+    while(it_z3!=lines_dist.end())
+    {
+        std::cout<<(*it_z3)[6]<<std::endl;
+
+        std::vector<cv::Vec8i>::iterator it_z4=lines_dist_c.begin();
+
+        while(it_z4!=lines_dist_c.end())
+        {  if(*it_z3==*it_z4||flag1)//if(*it3_n==*it4_n||flag)
+            {
+                flag1=true;
+                if(flag2<2)
+                    ++flag2;
+                if(flag2==2&&flag1){
+
+                    if ((*it_z3)[6] == (*it_z4)[6])//存在连续两个数相等，则众数+1
+                        count++;
+                }
+
+            }
+            ++it_z4;
+
+        }
+        if (MaxCount < count)
+        {
+            MaxCount = count;//当前最大众数
+            it_zf = it_z3;//当前众数标记位置
+        }
+        flag2=0;
+        flag1 =false;
+        ++it_z3;
+    }
+    std::cout<<"zhongshu"<<(*it_zf)[6]<<"  "<<MaxCount<<std::endl;
+    std::vector<cv::Vec8i>::iterator it_z5=lines_dist.begin();
+    std::vector<cv::Vec8i>::iterator it_z6=lines_dist4.begin();
+
+    while (it_z5!=lines_dist.end()&&it_z6!=lines_dist4.end())
+    {
+        //std::cout<<(*it_ks)<<std::endl;
+
+        if(abs((*it_z5)[6]-(*it_zf)[6])<4)
+        {
+            cv::Point pt11((*it_z6)[0],(*it_z6)[1]);
+            cv::Point pt22((*it_z6)[2],(*it_z6)[3]);
+            cv::Point pt1((*it_z5)[0],(*it_z5)[1]);
+            cv::Point pt2((*it_z5)[2],(*it_z5)[3]);
+
+            cv::line( M2, pt1, pt2,cv::Scalar(255,255,255));
+            cv::line( M2, pt11, pt22,cv::Scalar(255,255,255));
+
+            float dist1 = get_distance(pt1,pt2);
+            float dist2 = get_distance(pt11,pt22);
+            if(abs(dist2-dist1)<20){
+                cv::line( M2, pt1, pt11,cv::Scalar(255,255,255));
+                cv::line( M2, pt2, pt22,cv::Scalar(255,255,255));
+                cv::Point P[4];
+                    P[0]=pt1;
+                    P[1]=pt2;
+                    P[2]=pt11;
+                    P[3]=pt22;
+                    cv::Point cen=get_center(P);
+                    //cv::circle(M2,cen,2,cv::Scalar(255,255,255));
+                    cv::floodFill(M2, cen, 255, NULL, cv::Scalar(0), cv::Scalar(0),cv::FLOODFILL_FIXED_RANGE);
+                    cv::Mat maskImage;
+                        M3.copyTo(maskImage, M2);
+                        cv::medianBlur(maskImage,maskImage,3);
+                    cv::imshow("1",maskImage);
+            }
+
+
+              /*  point_list(P,P_s);
+            int re=P_s[1].x-P_s[0].x;
+            pt1 =point_zs(P_s[0],re);
+            pt11=point_ys(P_s[1],re);
+            pt22=point_yx(P_s[2],re);
+            pt2 =point_zx(P_s[3],re);
+            cv::circle(M2,P[0],2,cv::Scalar(255,255,255));
+
+            cv::line( M2, pt1, pt2,cv::Scalar(255,255,255));
+            cv::line( M2, pt11, pt22,cv::Scalar(255,255,255));
+
+            dist1 = get_distance(pt1,pt2);
+            dist2 = get_distance(pt11,pt22);
+            if(abs(dist2-dist1)<10){
+                cv::line( M2, pt1, pt11,cv::Scalar(255,255,255));
+                cv::line( M2, pt2, pt22,cv::Scalar(255,255,255));
+            }*/
+        }
+        ++it_z5;
+        ++it_z6;
+    }
+    cv::imshow("qm2",M2);
+    //finder.drawDetectedLines (M3);
+    std::vector<cv::Vec2f> lines;
+    //cv::HoughLines (M,lines,1,PI/180,80);
+    /*std::vector<cv::Vec2f>::const_iterator iter = lines.begin ();
+        std::cout<<lines.size ()<<std::endl;*/
+    /*while(iter != lines.end())
+        {
+            float rho = (*iter)[0];
+            float theta = (*iter)[1];
+            if(theta<PI/4.||theta>3.*PI/4)
+        {   //画交点在上下两边的直线
+                cv::Point pt1(rho/cos(theta),0);
+                cv::Point pt2((rho-M.rows*sin(theta))/cos(theta),M.rows);
+                cv::line(M2,pt1,pt2,cv::Scalar(255),1);
+            }
+           else
+            {    //画交点在左右两边的直线
+                cv::Point pt1(0,rho/sin(theta));
+                cv::Point pt2(M.cols,(rho-M.cols*cos(theta)/sin(theta)));
+                cv::line(M2,pt1,pt2,cv::Scalar(255),1);
+            }
+            ++iter;
+        }*/
+
+    cv::imshow("M",M);
+
+    cv::imshow("M2",M3);
+
+
+    // cv::imwrite("M.jpg",M);
+    cv::waitKey(0);
+    // viewer("3",pointCloudPtr_o,"intensity");
+    /*   pcl::io::savePCDFileASCII("qie1.pcd",*pointCloudPtr_o);
+
+    cout<<"min.z = "<<min.z<<"\n"<<endl;
+    cout<<"max.z = "<<max.z<<"\n"<<endl;
+    cout<<"min.x = "<<min.x<<"\n"<<endl;
+    cout<<"max.x = "<<max.x<<"\n"<<endl;
+    cout<<"min.y = "<<min.y<<"\n"<<endl;
+    cout<<"max.y = "<<max.y<<"\n"<<endl;*/
+
+    return 0;
+}
+
