@@ -1,0 +1,63 @@
+#include<iostream>
+#include<vector>
+using namespace std;
+void ShellSort(vector<int> &array)
+{
+  int num=0;
+    for(int gap=array.size()/2;gap!=0;gap=gap/2)
+    {
+        for(int j=0;j<gap;j++)
+        {
+            for(int i=gap+j;i<array.size();i=i+gap)
+            {
+                num++;
+                int temp=array[i];
+                int k=i-gap;
+                while(k>=0&&array[k]>temp)
+                {
+                    array[k+gap]=array[k];
+                    k=k-gap;
+                }
+                array[k+gap] = temp;
+            }
+        }
+    }
+    std::cout<<num<<std::endl;
+}
+void ShellSort2(vector<int> &result){
+    int num=0;
+    int n = result.size();
+    for (int gap = n >> 1; gap > 0; gap >>= 1){
+        std::cout<<gap<<std::endl;
+        for (int i = gap; i < n; i++){
+            int temp = result[i];
+            int j = i - gap;
+             num++;
+            while (j >= 0 && result[j] > temp){
+                result[j + gap] = result[j];
+                j -= gap;
+            }
+            result[j + gap] = temp;
+        }
+    }
+    std::cout<<num<<std::endl;
+}
+#include<ctime>
+int main()
+{
+    int arr[]={6, 4, 8, 9, 2, 3};
+    vector<int> array(arr,arr+sizeof(arr)/sizeof(arr[0]));
+    clock_t startTimes,endTimes;
+    startTimes = clock();//计时开始
+    ShellSort2(array);
+    endTimes = clock();//计时结束
+    cout << "The run time is: " <<(double)(endTimes - startTimes) / CLOCKS_PER_SEC << "s" << endl;
+    clock_t startTime,endTime;
+    startTime = clock();//计时开始
+    ShellSort(array);
+    endTime = clock();//计时结束
+    cout << "The run time is: " <<(double)(endTime - startTime) / CLOCKS_PER_SEC << "s" << endl;
+    for(int i=0;i<array.size();i++)
+        cout<<array[i]<<endl;
+}
+

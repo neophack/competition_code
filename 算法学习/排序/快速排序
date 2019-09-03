@@ -1,0 +1,51 @@
+#include<iostream>
+#include<vector>
+using namespace std;
+int division(vector<int> &list,int left,int right)
+{
+    int base=list[left];
+    while(right>left)
+    {
+        while(right>left)
+        {
+            if(list[right]<=base)
+            {
+                list[left]=list[right];
+                break;
+            }
+            right--;
+        }
+        while(right>left)
+        {
+            if(list[left]>=base)
+            {
+                list[right]=list[left];
+                break;
+            }
+            left++;
+        }
+    }
+    list[left]=base;
+    return left;
+}
+void QuickSort(vector<int> &list,int left,int right)
+{
+    if (left < right) {
+        int base;
+        int last_left=left;
+        int last_right=right;
+        base=division(list,left,right);
+        QuickSort(list,last_left,base-1);
+        QuickSort(list,base+1,last_right);
+    }
+}
+
+int main()
+{
+    int arr[]={6, 4, 8, 9, 2, 3, 1};
+    vector<int> array(arr,arr+sizeof(arr)/sizeof(arr[0]));
+    QuickSort(array,0,array.size()-1);
+    for(int i=0;i<array.size();i++)
+        cout<<array[i]<<endl;
+}
+
