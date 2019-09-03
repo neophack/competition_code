@@ -1,0 +1,107 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include<strstream>
+#include <iomanip>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/common/impl/io.hpp>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <pcl/common/transforms.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <boost/shared_ptr.hpp>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/point_cloud.h>
+#include <pcl/console/time.h>   // TicToc
+#include <pcl/registration/icp.h>
+#include <pcl/filters/radius_outlier_removal.h>
+#include <pcl/common/common.h>
+#include <pcl/common/transforms.h>
+#include <pcl/filters/random_sample.h>
+#include <iostream>
+#include <sys/types.h>
+#include <dirent.h>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <string.h>
+#include <stdio.h>
+void search_Nearest_point(pcl::PointXYZL searchPoint,
+                          pcl::PointCloud<pcl::PointXYZL>::Ptr cloud,int &num)
+{
+
+    pcl::KdTreeFLANN<pcl::PointXYZL> kdtree;
+
+    kdtree.setInputCloud (cloud);
+
+    // K nearest neighbor search
+
+    int K = 1;
+
+    std::vector<int> pointIdxNKNSearch(K);
+    std::vector<float> pointNKNSquaredDistance(K);
+
+    if ( kdtree.nearestKSearch (searchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0 )
+    {
+        for (size_t i = 0; i < pointIdxNKNSearch.size (); ++i)
+        {
+            if(cloud->points[ pointIdxNKNSearch[i] ].label==searchPoint.label)
+                num++;
+
+                /*std::cout << "    "  <<   cloud->points[ pointIdxNKNSearch[i] ].x
+                                    << " " << cloud->points[ pointIdxNKNSearch[i] ].y
+                                    << " " << cloud->points[ pointIdxNKNSearch[i] ].z
+                                    << " (squared distance: " << pointNKNSquaredDistance[i] << ")"
+                                     "   squared distance2"<<distance_double(searchPoint,cloud->points[ pointIdxNKNSearch[i] ])<< std::endl;*/
+        }
+    }
+}
+
+void point_close(pcl::PointCloud<pcl::PointXYZL>::Ptr pointCloudPtr,
+                 pcl::PointCloud<pcl::PointXYZL>::Ptr pointCloudPtr2,
+                 int &num)
+{
+    if(pointCloudPtr->size()>=pointCloudPtr2->size())
+    {
+        for(int i=0;i<pointCloudPtr2->size();i++)
+        {
+           search_Nearest_point(pointCloudPtr2->points[i],pointCloudPtr,num);
+        }
+    }
+    else{
+
+        for(int i=0;i<pointCloudPtr->size();i++)
+        {
+           search_Nearest_point(pointCloudPtr->points[i],pointCloudPtr2,num);
+        }
+    }
+}
+int main()
+{
+    pcl::PointCloud<pcl::PointXYZL>::Ptr cloud1(new pcl::PointCloud<pcl::PointXYZL>());
+    pcl::PointCloud<pcl::PointXYZL>::Ptr cloud2(new pcl::PointCloud<pcl::PointXYZL>());
+
+    pcl::io::loadPCDFile("/home/ysl/音乐/杆塔test/tower5.28.pcd",*cloud1);
+    pcl::io::loadPCDFile("/home/ysl/音乐/杆塔test/tower5.pcd",*cloud2);
+    int num=0;
+    point_close(cloud1,cloud2,num);
+    int c2=cloud2->size();
+    int c1=cloud1->size();
+    std::cout<<"c1:"<<c1<<std::endl;
+    std::cout<<"c2:"<<c2<<std::endl;
+    std::cout<<"num:"<<num<<std::endl;
+
+    double nums=num/(c1+c2);
+    std::cout<<"accuray:"<<nums<<std::endl;
+
+    return 0;
+}
+

@@ -1,0 +1,254 @@
+#include <iostream>
+#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <fstream>
+#include <string>
+
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <boost/shared_ptr.hpp>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/point_cloud.h>
+#include <pcl/console/time.h>   // TicToc
+#include <pcl/registration/icp.h>
+#include <pcl/filters/radius_outlier_removal.h>
+#include <pcl/common/common.h>
+#include <pcl/common/transforms.h>
+#include <pcl/filters/random_sample.h>
+bool polynomial_curve_fit(std::vector<cv::Point>& key_point, int n, cv::Mat& A)
+{
+    //Number of key points
+    int N = key_point.size();
+
+    //构造矩阵X
+    cv::Mat X = cv::Mat::zeros(n + 1, n + 1, CV_64FC1);
+    for (int i = 0; i < n + 1; i++)
+    {
+        for (int j = 0; j < n + 1; j++)
+        {
+            for (int k = 0; k < N; k++)
+            {
+                X.at<double>(i, j) = X.at<double>(i, j) +
+                        std::pow(key_point[k].x, i + j);
+            }
+        }
+    }
+
+    //构造矩阵Y
+    cv::Mat Y = cv::Mat::zeros(n + 1, 1, CV_64FC1);
+    for (int i = 0; i < n + 1; i++)
+    {
+        for (int k = 0; k < N; k++)
+        {
+            Y.at<double>(i, 0) = Y.at<double>(i, 0) +
+                    std::pow(key_point[k].x, i) * key_point[k].y;
+        }
+    }
+
+    A = cv::Mat::zeros(n + 1, 1, CV_64FC1);
+    //求解矩阵A
+    cv::solve(X, Y, A, cv::DECOMP_LU);
+    return true;
+}
+pcl::PointCloud<pcl::PointXYZ>::Ptr transform_cloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,double K)
+{
+    pcl::PointXYZ min;
+    pcl::PointXYZ max;
+    pcl::getMinMax3D(*cloud,min,max);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_t(new pcl::PointCloud<pcl::PointXYZ>);
+    for(int i=0;i<cloud->size();i++)
+    {
+    double theta=atan(K);
+    double y=double(sin(CV_PI/2-theta)*(cloud->points[i].x-min.x)+cos(CV_PI/2-theta)*(cloud->points[i].y-min.y));
+    double x=double(cos(CV_PI/2-theta)*(cloud->points[i].x-min.x)-sin(CV_PI/2-theta)*(cloud->points[i].y-min.y));
+    pcl::PointXYZ point;
+
+    point.x=x;
+    point.y=y;
+    point.z=cloud->points[i].z;
+    cloud_t->points.push_back(point);
+    }
+    cloud_t->resize(cloud_t->size());
+    cloud_t->width=cloud_t->size();
+    cloud_t->height=1;
+    cloud_t->is_dense=false;
+    return cloud_t;
+}
+class Grid//将一个栅格定义为一个类对象
+{
+public:
+    bool  road;//是不是路
+    float h_mean;//平均高度
+    float h_square;//高度方差
+    pcl::PointCloud<pcl::PointXYZ>::Ptr grid_cloud {new pcl::PointCloud<pcl::PointXYZ>};//指向栅格内的点云的指针
+    pcl::PointIndices::Ptr grid_inliers {new pcl::PointIndices};//栅格内点云索引的指针
+    int num;//点云点数
+    //std::vector<int> indices;//点云索引（定义了索引向量指针就不用定义它啦，因为后面想将得到的索引值赋给索引的时候，直接赋给*ptr就可以了）
+};
+
+int main()
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    std::string filename="/home/ysl/qt_project/build-testline-Desktop_Qt_5_11_1_GCC_64bit-Default/3s1.pcd";
+    pcl::io::loadPCDFile(filename,*cloud);
+    int width;
+    int height;
+
+    pcl::PointXYZ min;
+    pcl::PointXYZ max;
+    pcl::getMinMax3D(*cloud,min,max);
+    width=int(max.x-min.x);
+    height=int(max.y-min.y);
+    std::vector<cv::Point> points;
+    //创建用于绘制的深蓝色背景图像
+    cv::Mat image = cv::Mat::zeros(height+10, width+10, CV_8UC3);
+    image.setTo(cv::Scalar(100, 0, 0));
+    for(int i=0;i<cloud->size();i++)
+    {
+        cv::Point point(cloud->points[i].x-min.x,cloud->points[i].y-min.y);
+        points.push_back(point);
+    }
+    //绘制折线
+   // cv::polylines(image, points, false, cv::Scalar(0, 255, 0), 1, 8, 0);
+
+    cv::Mat A;
+
+    polynomial_curve_fit(points, 1, A);
+    std::cout << "A = " << A << std::endl;
+    double theta=atan(A.at<double>(1, 0));
+    width=int(sin(CV_PI/2-theta)*(max.x-min.x)+cos(CV_PI/2-theta)*(max.y-min.y));
+
+    height=int(max.z);
+    points.clear();
+
+   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_t(new pcl::PointCloud<pcl::PointXYZ>());
+    cloud_t=transform_cloud(cloud,A.at<double>(1, 0));
+    pcl::PointXYZ min_t;
+    pcl::PointXYZ max_t;
+    pcl::getMinMax3D(*cloud_t,min_t,max_t);
+
+    int gridy=5;
+    int row= floor((max_t.y-min_t.y)/gridy);
+
+    Grid grid[row];
+    for (int m=0;m<cloud_t->points.size();m++)//这些点一个一个看
+    {
+
+                for(int jk=0;jk<row;jk++)
+                {
+                    if(jk==0)
+                    {
+                     if((cloud_t->points[m].y>=(min_t.y+jk*gridy))&&(cloud_t->points[m].y<=(min_t.y+jk*gridy+gridy)))
+                    {
+                        grid[jk].grid_cloud->points.push_back(cloud_t->points[m]);
+                    }
+                    }
+                   else
+                    {
+                        if((cloud_t->points[m].y>(min_t.y+jk*gridy))&&(cloud_t->points[m].y<=(min_t.y+jk*gridy+gridy)))
+                       {
+                           grid[jk].grid_cloud->points.push_back(cloud_t->points[m]);
+                       }
+                    }
+
+
+                }
+
+    }
+    Grid cloud_pcl[row];
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_need(new pcl::PointCloud<pcl::PointXYZ>);
+    std::vector<cv::Point> points_fitted;
+
+    for(int jk=0;jk<row;jk++)
+    {
+     for(int i=0;i<grid[jk].grid_cloud->size();i++)
+    {
+        cv::Point point(grid[jk].grid_cloud->points[i].y,grid[jk].grid_cloud->points[i].z);
+        points.push_back(point);
+    }
+
+    cv::Mat B;
+    //绘制折线
+    //cv::polylines(image, points, false, cv::Scalar(0, 255, 0), 1, 8, 0);
+    polynomial_curve_fit(points, 3, B);
+
+ for(int i=0;i<grid[jk].grid_cloud->size();i++)
+ {
+     double y=grid[jk].grid_cloud->points[i].y;
+      double z = B.at<double>(0, 0) + B.at<double>(1, 0) * y +B.at<double>(2, 0) * y*y+B.at<double>(3, 0) *y*y*y;
+
+        pcl::PointXYZ point;
+         y=sin(theta-CV_PI/2)*(grid[jk].grid_cloud->points[i].x)+cos(theta-CV_PI/2)*(grid[jk].grid_cloud->points[i].y);
+        double x=cos(theta-CV_PI/2)*(grid[jk].grid_cloud->points[i].x)-sin(theta-CV_PI/2)*(grid[jk].grid_cloud->points[i].y);
+        point.x=x+min.x;
+        point.y=y+min.y;
+        point.z=z;
+        cloud_pcl[jk].grid_cloud->points.push_back(point);
+        points_fitted.push_back(cv::Point(y, z));
+    }
+
+    cloud_pcl[jk].grid_cloud->resize(cloud_pcl[jk].grid_cloud->points.size());
+    cloud_pcl[jk].grid_cloud->height=1;
+    cloud_pcl[jk].grid_cloud->width=cloud_pcl[jk].grid_cloud->points.size();
+    cloud_pcl[jk].grid_cloud->is_dense=false;
+    std::cout<<cloud_pcl[jk].grid_cloud->size()<<std::endl;
+    *cloud_need=*cloud_pcl[jk].grid_cloud+*cloud_need;
+}
+    double z_aver;
+    for(int i=0;i<cloud->size();i++)
+    {
+        z_aver=cloud->points[i].z+z_aver;
+    }
+    z_aver=z_aver/cloud->size();
+    double TSS=0;
+    for(int i=0;i<cloud->size();i++)
+    {
+        TSS=pow(cloud->points[i].z-z_aver,2)+TSS;
+    }
+    double RSS=0;
+    for(int i=0;i<cloud_need->size();i++)
+    {
+        RSS=pow(cloud_need->points[i].z-cloud->points[i].z,2)+RSS;
+    }
+    std::cout<<RSS<<" "<<TSS<<std::endl;
+    double R2=1-(RSS/TSS);
+    std::cout<<R2<<std::endl;
+    pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer);
+    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> handler_z (cloud, 255,255,255);
+   // pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZ> handler_z1 (cloud_need, "z");
+     pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> handler_z1 (cloud_need, 255,0,0);
+    pcl::io::savePCDFileASCII("1.pcd",*cloud_need);
+    viewer->addPointCloud (cloud_need, handler_z1, "z");
+    viewer->addPointCloud (cloud, handler_z, "x");
+    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 10, "z");
+    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 10, "x");
+    viewer->spin ();
+    cv::polylines(image, points_fitted, false, cv::Scalar(255, 255, 255), 1, 8, 0);
+
+    cv::imshow("image", image);
+
+    cv::waitKey(0);
+    return 0;
+}
+//    double error=0;
+//    do{
+//     error=0;
+//    polynomial_curve_fit(points, 3, B);
+//    for(int i=0;i<cloud->size();i++)
+//    {
+//        pcl::PointCloud<pcl::PointXYZ>::iterator index = cloud->begin();
+//        index = cloud->begin() + i;
+//        double y=sin(CV_PI/2-theta)*(cloud->points[i].x-min.x)+cos(CV_PI/2-theta)*(cloud->points[i].y-min.y);
+//        double z = B.at<double>(0, 0) + B.at<double>(1, 0) * y +B.at<double>(2, 0) * y*y+B.at<double>(3, 0) *y*y*y;
+//         error=error+abs(cloud->points[i].z-z);
+//        if((cloud->points[i].z-z)>3)
+//            cloud->erase(index);//删除第i个
+//     }
+//    for(int i=0;i<cloud->size();i++)
+//    {
+//        cv::Point point(sin(CV_PI/2-theta)*(cloud->points[i].x-min.x)+cos(CV_PI/2-theta)*(cloud->points[i].y-min.y),cloud->points[i].z);
+//        points.push_back(point);
+//    }
+//    std::cout<<error<<std::endl;
+//    }while(error>5000);
+

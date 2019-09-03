@@ -1,0 +1,47 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/io/pcd_io.h>
+#include <liblas/liblas.hpp>
+
+typedef pcl::PointXYZI Point;
+
+using namespace std;
+
+
+int main()
+{
+    //确定las文件输入路径以及pcd文件输出路径
+    const char* lasfile = "TO_core_last_zoom.las";
+    const char* pcdfile = "123.pcd";
+
+    std::ifstream ifs;
+    ifs.open(lasfile, std::ios::in | std::ios::binary);
+
+    liblas::ReaderFactory f ;
+    liblas::Reader reader = f.CreateWithStream(ifs);
+    liblas::Header const& header = reader.GetHeader();
+
+    pcl::PointCloud<Point>::Ptr pointCloudPtr(new pcl::PointCloud<Point>);
+    int count = header.GetPointRecordsCount();
+    pointCloudPtr->resize(count);
+    pointCloudPtr->width = 1;
+    pointCloudPtr->height = count;
+    pointCloudPtr->is_dense = false;
+
+    int i = 0;
+    while (reader.ReadNextPoint())
+    {
+        liblas::Point const& p = reader.GetPoint();
+        pointCloudPtr->points[i].x = p.GetX();
+        pointCloudPtr->points[i].y = p.GetY();
+        pointCloudPtr->points[i].z = p.GetZ();
+        pointCloudPtr->points[i].intensity = p.GetIntensity();
+        ++i;
+    }
+    pcl::io::savePCDFileASCII(pcdfile,*pointCloudPtr);
+return 0;
+}

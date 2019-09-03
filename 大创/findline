@@ -1,0 +1,870 @@
+#include <iostream>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/filters/filter_indices.h>
+#include <pcl/point_cloud.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <liblas/liblas.hpp>
+#include <strstream>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/io/pcd_io.h>
+#include <liblas/liblas.hpp>
+#include <pcl/visualization/point_cloud_color_handlers.h>
+#include <iostream>
+// PCL specific includes
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/console/print.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <iostream>
+#include <pcl/point_types.h>
+#include <pcl/filters/passthrough.h>
+
+#include <pcl/ModelCoefficients.h>
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <fstream>
+#include <iosfwd>
+#include <math.h>
+#include <iomanip>
+#include"stdlib.h"
+#include "iostream"
+#include "string"
+#include <iostream>
+#include <pcl/visualization/cloud_viewer.h>
+#include<pcl/io/pcd_io.h>
+#include<pcl/point_types.h>
+#include <pcl/conversions.h>
+#include <pcl/features/normal_3d.h>
+#include <boost/thread/thread.hpp>
+#include <pcl/common/common_headers.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/console/parse.h>
+#include <pcl/filters/statistical_outlier_removal.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/common/impl/io.hpp>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <pcl/common/transforms.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/io/pcd_io.h>
+#include <liblas/liblas.hpp>
+#include <opencv2/opencv.hpp>
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui/highgui.hpp"
+#include <ogr_spatialref.h>
+#include <ogr_geometry.h>
+#include<pcl/io/pcd_io.h>
+#include<pcl/point_types.h>
+#include<pcl/registration/icp.h>
+#include <pcl/visualization/pcl_visualizer.h>//可视化头文件
+#include <pcl/filters/filter.h>
+
+#include <pcl/filters/voxel_grid.h>
+#include <boost/make_shared.hpp>              //boost指针相关头文件
+#include <pcl/point_types.h>                  //点类型定义头文件
+#include <pcl/point_cloud.h>                  //点云类定义头文件
+#include <pcl/point_representation.h>         //点表示相关的头文件
+#include <pcl/io/pcd_io.h>                    //PCD文件打开存储类头文件
+#include <pcl/filters/voxel_grid.h>           //用于体素网格化的滤波类头文件
+#include <pcl/filters/filter.h>             //滤波相关头文件
+#include <pcl/features/normal_3d.h>         //法线特征头文件
+#include <pcl/registration/icp.h>           //ICP类相关头文件
+#include <pcl/registration/icp_nl.h>        //非线性ICP 相关头文件
+#include <pcl/registration/transforms.h>      //变换矩阵类头文件
+#include <pcl/visualization/pcl_visualizer.h>  //可视化类头文件std::vector<int> indices_;
+
+std::vector<int> indices_;
+
+int vp_1(0);
+int vp_2(1); //定义存储 左 右视点的ID
+//创建可视化对象
+boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("viewer"));
+
+typedef pcl::PointXYZ PointT;
+typedef pcl::PointCloud<PointT> PointCloudT;
+
+// Mutex: //
+boost::mutex cloud_mutex;
+
+#define PI 3.1415926
+
+class LineFinder
+{
+private:
+    std::vector<cv::Vec4i> lines;  // 直线对应的点参数向量
+    double deltaRho;  //步长
+    double deltaTheta;
+    int minVote;  // 判断是直线的最小投票数
+    double minLength;  // 判断是直线的最小长度
+    double maxGap;  // 同一条直线上点之间的距离容忍度
+public:
+    LineFinder() : deltaRho(1), deltaTheta(PI/180),
+        minVote(10), minLength(0.), maxGap(0.) {}  //初始化
+
+    void setAccResolution(double dRho, double dTheta)   // 设置步长
+    {
+        deltaRho= dRho;
+        deltaTheta= dTheta;
+    }
+
+    void setMinVote(int minv)  // 设置最小投票数
+    {
+        minVote= minv;
+    }
+
+    void setLineLengthAndGap(double length, double gap)  // 设置最小线段长度和线段间距容忍度
+    {
+        minLength= length;
+        maxGap= gap;
+    }
+
+
+    std::vector<cv::Vec4i> findLines(cv::Mat& binary)  //寻找线段
+    {
+        lines.clear();
+        cv::HoughLinesP(binary,lines, deltaRho, deltaTheta, minVote,minLength, maxGap);
+        return lines;
+    }
+
+    void drawDetectedLines(cv::Mat &image, cv::Scalar color=cv::Scalar(255,255,255))  // 画线段
+    {
+        std::vector<cv::Vec4i>::const_iterator it2=lines.begin();
+        while (it2!=lines.end())
+        {
+            cv::Point pt1((*it2)[0],(*it2)[1]);
+            cv::Point pt2((*it2)[2],(*it2)[3]);
+            cv::line( image, pt1, pt2, color);
+            ++it2;
+        }
+    }
+};
+
+/*void viewer(string name,pcl::PointCloud<Point>::Ptr pointCloudPtr,string type_)
+{
+    pcl::visualization::PCLVisualizer p (name);
+    p.setBackgroundColor (1, 1, 1);
+
+    std::cerr << "PointCloudColorHandlerGenericField demo." << std::endl;
+    pcl::visualization::PointCloudColorHandlerGenericField<Point> handler_z (pointCloudPtr, type_);
+
+    p.addPointCloud (pointCloudPtr, handler_z, "cloud_z");
+    p.spin ();
+    p.removePointCloud ("cloud_z");
+
+
+    //p.addCoordinateSystem (0.1);
+
+    // Demonstrate usage of spinOnce()
+    p.resetStoppedFlag();
+    p.removePointCloud ("cloud");
+    p.spin ();
+    std::cerr << "ok" << std::endl;
+}*/
+void get_point_function(double point_cen,double &point_re,int k,int L,int num)
+{
+    if(num==1)
+        point_re=point_cen+(L*k)/(2*sqrt(k*k+1));
+    if(num==2)
+        point_re=point_cen-(L*k)/(2*sqrt(k*k+1));
+    if(num==3)
+        point_re=point_cen+L/(2*sqrt(k*k+1));
+    if(num==4)
+        point_re=point_cen-L/(2*sqrt(k*k+1));
+}
+void get_up_down_point(cv::Point2d point_cen,cv::Point2d &point_up,cv::Point2d &point_down,int k,int L,bool flag)
+{
+    if(flag){
+        get_point_function(point_cen.y,point_down.y,k,L,1);
+        get_point_function(point_cen.y,point_up.y,k,L,2);
+        if(k<0)
+        {
+            get_point_function(point_cen.x,point_down.x,k,L,4);
+            get_point_function(point_cen.x,point_up.x,k,L,3);
+        }
+        else {
+            get_point_function(point_cen.x,point_down.x,k,L,3);
+            get_point_function(point_cen.x,point_up.x,k,L,4);
+        }}
+    else{
+        get_point_function(point_cen.x,point_down.x,k,L,1);
+        get_point_function(point_cen.x,point_up.x,k,L,2);
+        if(k>0)
+        {
+            get_point_function(point_cen.y,point_down.y,k,L,4);
+            get_point_function(point_cen.y,point_up.y,k,L,3);
+        }
+        else
+        {
+            get_point_function(point_cen.y,point_down.y,k,L,3);
+            get_point_function(point_cen.y,point_up.y,k,L,4);
+        }
+    }
+}
+int find_maxcount(std::vector<int> K_vector)
+{
+    std::sort (K_vector.begin(), K_vector.begin()+K_vector.size());
+
+    int MaxCount = 1;
+    int index=0;
+    std::vector<int>::const_iterator it=K_vector.begin();
+    std::vector<int>::const_iterator it_end=K_vector.end();
+    --it_end;
+    std::vector<int>::const_iterator j ;
+
+    int count = 1;
+    for (j = it; j < it_end; j++)
+    {
+        if ((*j) == *(j + 1))//存在连续两个数相等，则众数+1
+        {
+            count++;
+        }
+
+        if (MaxCount < count)
+        {
+            MaxCount = count;//当前最大众数
+            index = *j;//当前众数标记位置
+        }
+        ++j;
+        //位置后移到下一个未出现的数字
+    }
+    return index;
+}
+float get_distance1(cv::Vec8i line1,cv::Vec8i line2){
+
+    float k1 = line1[4];
+    float k2 = line2[4];
+
+    float b1 = line1[3] - k1*line1[2];
+    float b2 = line2[3] - k2*line2[2];
+    float distance;
+    return  distance = abs(b1 - b2) / sqrt(k1*k1 + 1);
+}
+float get_distance(cv::Point p1,cv::Point p2){
+
+    float distance=sqrt(pow(p1.x-p2.x,2) + pow(p1.y-p2.y,2));
+    return distance;
+}
+cv::Point point_yx(cv::Point p1,int n){
+    p1.x = p1.x+n;
+    p1.y = p1.y+n;
+    return p1;
+}
+cv::Point point_zs(cv::Point p1,int n){
+    p1.x = p1.x-n;
+    p1.y = p1.y-n;
+    return p1;
+}
+cv::Point point_ys(cv::Point p1,int n){
+    p1.x = p1.x+n;
+    p1.y = p1.y-n;
+    return p1;
+}
+cv::Point point_zx(cv::Point p1,int n){
+    p1.x = p1.x-n;
+    p1.y = p1.y+n;
+    return p1;
+}
+cv::Point get_center(cv::Point P[4]){
+    cv::Point pc1 ,pc2,pc;
+    pc1.x=(P[0].x+P[1].x)/2;
+    pc1.y=(P[0].y+P[1].y)/2;
+    pc2.x=(P[2].x+P[3].x)/2;
+    pc2.y=(P[2].y+P[3].y)/2;
+    pc.x=(pc1.x+pc2.x)/2;
+    pc.y=(pc1.y+pc2.y)/2;
+    return pc;
+}
+void point_list(cv::Point2d P[4],cv::Point2d P_s[4]){
+    cv::Point pc1 ,pc2,pc;
+    pc1.x=(P[0].x+P[1].x)/2;
+    pc1.y=(P[0].y+P[1].y)/2;
+    pc2.x=(P[2].x+P[3].x)/2;
+    pc2.y=(P[2].y+P[3].y)/2;
+    pc.x=(pc1.x+pc2.x)/2;
+    pc.y=(pc1.y+pc2.y)/2;
+    /* P[0]=pt1;
+            P[1]=pt2;
+            P[2]=pt11;
+            P[3]=pt22;*/
+    for(int i=0;i<4;i++)
+    {
+
+        if((P[i].x<pc.x)&&(P[i].y<pc.y))
+            P_s[0]=P[i];
+        if((P[i].x>pc.x)&&(P[i].y<pc.y))
+            P_s[1]=P[i];
+        if((P[i].x>pc.x)&&(P[i].y>pc.y))
+            P_s[2]=P[i];
+        if((P[i].x<pc.x)&&(P[i].y>pc.y))
+            P_s[3]=P[i];
+    }
+
+}
+
+struct callback_args{
+    // structure used to pass arguments to the callback function
+    PointCloudT::Ptr clicked_points_3d;
+    PointCloudT::Ptr clicked_points_3d1;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1;
+    pcl::visualization::PCLVisualizer::Ptr viewerPtr;
+};
+struct callback_args_key_board{
+    // structure used to pass arguments to the callback function
+    PointCloudT::Ptr clicked_points_3d;
+    PointCloudT::Ptr clicked_points_3d1;
+    pcl::visualization::PCLVisualizer::Ptr viewerPtr;
+};
+bool first = true;
+int order=0;
+void keyboardEventOccurred(const pcl::visualization::KeyboardEvent& event, void* args){
+    struct callback_args_key_board* data = (struct callback_args_key_board *)args;
+    if(event.getKeySym() == "space" && event.keyDown()){
+        std::cout << "space was pressed => removing all point" << std::endl;
+        data->viewerPtr->removePointCloud("clicked_points1");
+        data->viewerPtr->removePointCloud("clicked_points2");
+        data->clicked_points_3d->points.clear();
+        data->clicked_points_3d1->points.clear();
+        first = true;
+        order=0;
+    }
+}
+int pos_=0;
+void mouseEventOccurred (const pcl::visualization::MouseEvent &event,
+                         void* viewer_void)
+{
+    if (event.getButton () == pcl::visualization::MouseEvent::LeftButton &&
+            event.getType () == pcl::visualization::MouseEvent::MouseButtonRelease)
+    {
+        pos_=event.getX();
+        //std::cout<<pos_<<std::endl;
+    }
+}
+void pp_callback(const pcl::visualization::PointPickingEvent& event, void* args)
+{
+    struct callback_args* data = (struct callback_args *)args;
+    if (event.getPointIndex() == -1)
+        return;
+    int indices=event.getPointIndex();
+    indices_.push_back(indices);
+
+    if(order==0||order==1)
+    {
+        data->clicked_points_3d->points.push_back(data->cloud->points.at(indices));
+        // Draw clicked points in red:
+        pcl::visualization::PointCloudColorHandlerCustom<PointT> red1(data->clicked_points_3d, 255, 255, 255);
+        data->viewerPtr->removePointCloud("clicked_points1");
+        data->viewerPtr->addPointCloud(data->clicked_points_3d, red1, "clicked_points1",vp_1);
+        data->viewerPtr->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 10, "clicked_points1");
+        std::cout<<"右边已点"<<std::endl;
+        first=false;
+    }
+    if(order==2||order==3){
+        data->clicked_points_3d1->points.push_back(data->cloud1->points.at(indices));
+        // Draw clicked points in red:
+        pcl::visualization::PointCloudColorHandlerCustom<PointT> red2(data->clicked_points_3d1, 255, 255, 255);
+        data->viewerPtr->removePointCloud("clicked_points2");
+        data->viewerPtr->addPointCloud(data->clicked_points_3d1, red2, "clicked_points2",vp_2);
+        data->viewerPtr->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 10, "clicked_points2");
+        std::cout<<"左边已点"<<std::endl;
+        first = true;
+    }
+    ++order;
+}
+
+void viewer_(std::string name,pcl::PointCloud<PointT>::Ptr pointCloudPtr)
+{
+    pcl::visualization::PCLVisualizer p (name);
+    //p.setBackgroundColor (1, 1, 1);
+
+    std::cerr << "PointCloudColorHandlerGenericField demo." << std::endl;
+    pcl::visualization::PointCloudColorHandlerGenericField<PointT> handler_z (pointCloudPtr, "z");
+
+    p.addPointCloud (pointCloudPtr, handler_z, "cloud_z");
+    // p.spin ();
+    //p.removePointCloud ("cloud_z");
+
+
+    //p.addCoordinateSystem (0.1);
+
+    // Demonstrate usage of spinOnce()
+    // p.resetStoppedFlag();
+    //p.removePointCloud ("cloud");
+    // p.spin ();
+    std::cerr << "ok" << std::endl;
+}
+// 计算叉乘 |P0P1| × |P0P2|
+double Multiply(cv::Point p1, cv::Point p2, cv::Point p0)
+{
+    return ((p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y));
+}
+
+bool isContain(cv::Point mp1,cv::Point mp2,cv::Point mp3,cv::Point mp4,cv::Point mp)
+{
+    if (Multiply(mp, mp1, mp2) * Multiply(mp,mp4, mp3) <= 0
+
+            && Multiply(mp, mp4, mp1) * Multiply(mp, mp3, mp2) <= 0)
+        return true;
+
+    return false;
+}
+int alpha_slider;
+cv::Mat M;
+void on_trackbar( int, void* )
+{
+    cv::threshold(M,M,alpha_slider,255,cv::THRESH_BINARY);
+    cv::imshow( "Linear Blend", M );
+}
+
+cv::Point point_re(cv::Point2d point_nus,pcl::PointXYZ bs)
+{
+    point_nus.x=point_nus.x-bs.x;
+    point_nus.y=point_nus.y-bs.y;
+}
+void td_tower_process( pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloudPtr_in,cv::Point2f p1[2],
+                       pcl::PointCloud<pcl::PointXYZ>::Ptr &pointCloudPtr_o2)
+{
+#if(1)
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloudPtr (new pcl::PointCloud<pcl::PointXYZ>);
+    //pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloudPtr_in (new pcl::PointCloud<pcl::PointXYZ>);
+
+    //pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloudPtr_xyz (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloudPtr_xyz (new pcl::PointCloud<pcl::PointXYZ>);
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloudPtr_o (new pcl::PointCloud<pcl::PointXYZ>);
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloudPtr_o2 (new pcl::PointCloud<pcl::PointXYZ>);
+
+
+    //viewer("1",pointCloudPtr,"intensity");
+
+    pointCloudPtr_o->points.resize(pointCloudPtr_in->size());
+
+    std::vector<int> indices;
+    pcl::removeNaNFromPointCloud(*pointCloudPtr_in, *pointCloudPtr_in, indices);
+
+//    pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;// 创建滤波器对象
+//    sor.setInputCloud(pointCloudPtr_in);                        //设置滤波的点云
+//    sor.setMeanK(3);                                //设置在进行统计时考虑查询点邻近点数
+//    sor.setStddevMulThresh(20);                    //设置判断是否为离群点的阈值
+//    sor.filter(*pointCloudPtr);                    //执行滤波处理保存内点到cloud_filtered
+    //viewer_("3",cloud_o_);
+    //pointCloudPtr=pointCloudPtr_in;
+    pcl::PointXYZ min;//用于存放三个轴的最小值
+    pcl::PointXYZ max;//用于存放三个轴的最大值
+    //pcl::copyPointCloud(*pointCloudPtr_in, *pointCloudPtr_xyz);
+
+    pcl::getMinMax3D(*pointCloudPtr_in,min,max);
+
+    pcl::PassThrough<pcl::PointXYZ> pass;
+    pass.setInputCloud (pointCloudPtr_in);
+    pass.setFilterFieldName ("z");
+    pass.setFilterLimits ((max.z-min.z)*0.6, max.z);
+    //pass.setFilterLimitsNegative (true);true输出滤去部分
+    pass.filter (*pointCloudPtr_o);
+    //cv::Mat M(int(max.y-min.y),int(max.x-min.x),CV_8UC1);
+    M = cv::Mat::zeros(int(max.y-min.y),int(max.x-min.x),CV_8UC1);
+    // cout<<min.x<<" "<<min.y<<endl;
+    int i=0,j=0;
+    for (size_t k = 0; k < pointCloudPtr_o->points.size (); ++k) //显示所有的点
+    {
+        j=int(pointCloudPtr_o->points[k].x-min.x);
+        i=int(pointCloudPtr_o->points[k].y-min.y);
+        if((M.at<uchar>(i,j)+20)<=255)
+            M.at<uchar>(i,j)=M.at<uchar>(i,j)+20;
+    }
+    cv::imwrite("1.jpg",M);
+#elif(1)
+    cv::Mat M=cv::imread("1.jpg",0);
+#endif
+    /* cv::Mat M2,M3;
+    cv::Mat element;
+    M2 =cv::Mat::zeros(cv::Size(M.cols,M.rows),CV_8UC1);
+    M3=M.clone();
+
+    //cv::equalizeHist(M, M);
+    cv::imshow("first",M);
+    element=cv::getStructuringElement(cv::MORPH_CROSS,cv::Size(3,3));
+    //morphologyEx(img,img2,MORPH_CLOSE,element);
+
+    cv::dilate(M,M,element);
+    cv::threshold(M,M,10,255,cv::THRESH_TRIANGLE);
+    //cv::medianBlur(M, M, 3);
+    cv::morphologyEx(M,M,cv::MORPH_CLOSE,element);
+    int g_CannyThred =150;
+    cv::Canny(M, M, (double)g_CannyThred, (double)((g_CannyThred + 1) * (2/100.0)), 3);
+    cv::imwrite("1.jpg",M);
+*/
+    // cv::Canny (M,M,10,350);  //边缘检测
+    cv::Mat element=cv::getStructuringElement(cv::MORPH_CROSS,cv::Size(3,3));
+    cv::dilate(M,M,element);
+    cv::threshold(M,M,20,255,cv::THRESH_BINARY);
+    int g_CannyThred =150;
+    cv::Canny(M, M, (double)g_CannyThred, (double)((g_CannyThred + 1) * (2/100.0)), 3);
+    LineFinder finder;
+    finder.setMinVote (20);
+    finder.setLineLengthAndGap (10,10);
+    std::vector<cv::Vec4i> lines1;  // 直线对应的点参数向量
+    std::vector<cv::Vec8i> lines_k;
+    lines1=finder.findLines (M);
+    if(lines1.size ()==0)
+    {
+        std::cout<<"没有检测到直线"<<std::endl;
+        return;
+    }
+    std::cout<<lines1.size ()<<std::endl;
+    std::vector<cv::Vec4i>::const_iterator it2=lines1.begin();
+    std::vector<int> K_vector;
+    for(int i=0;i<2;i++)
+    {
+    p1[i].x=p1[i].x-min.x;
+    p1[i].y=p1[i].y-min.y;
+    }
+  int error=0;
+  int last_error=0;
+  int k_get;
+    int k_define=(p1[i].y-p1[i].y)/(p1[i].x-p1[i].x);
+    while (it2!=lines1.end())
+    {
+        cv::Point pt1((*it2)[0],(*it2)[1]);
+        cv::Point pt2((*it2)[2],(*it2)[3]);
+        int K_num;
+        if(pt2.x!=pt1.x)
+            K_num = int((pt2.y-pt1.y)/(pt2.x-pt1.x));
+        float b = (*it2)[3] - K_num*(*it2)[2];
+         error=k_define-K_num;
+         if(last_error==0)
+         {
+             last_error=error;
+             k_get=K_num;
+         }
+         else if(last_error>error)
+         {
+             last_error=error;
+             k_get=K_num;
+         }
+         cv::Vec8i l_k;
+        l_k[0]=(*it2)[0];
+        l_k[1]=(*it2)[1];
+        l_k[2]=(*it2)[2];
+        l_k[3]=(*it2)[3];
+        l_k[4]=K_num;
+        l_k[5]=b;
+        K_vector.push_back(K_num);
+        lines_k.push_back(l_k);
+        ++it2;
+    }
+
+    int k_maxcount=find_maxcount(K_vector);
+
+    std::cout<<k_maxcount<<"  "<<k_get<<std::endl;
+
+    int L_sx=4;
+    int L_zy=16;
+    cv::Point2d point1,point2;
+    cv::Point2d point_lists[8];
+
+    std::cout<<p1[0]<<" "<<p1[1]<<std::endl;
+    for(int i=0;i<2;i++)
+   { //上下两个点
+    get_up_down_point(p1[i],point1,point2, k_maxcount,L_sx,true);
+    //左右两个点
+    get_up_down_point(point1,point_lists[4*i+0],point_lists[4*i+1], k_maxcount,L_zy,false);
+    get_up_down_point(point2,point_lists[4*i+3],point_lists[4*i+2], k_maxcount,L_zy,false);
+    }
+    for(int i=0;i<8;i++)
+        std::cout<<point_lists[i]<<std::endl;
+
+    cv::Mat M2 =cv::Mat::zeros(cv::Size(M.cols,M.rows),CV_8UC3);
+    std::vector<cv::Vec8i>::const_iterator it3=lines_k.begin();
+    while (it3!=lines_k.end())
+    {
+        if((*it3)[4]==k_maxcount)
+        {
+            cv::Point pt1((*it3)[0],(*it3)[1]);
+            cv::Point pt2((*it3)[2],(*it3)[3]);
+            cv::line(M,pt1,pt2, cv::Scalar(255,255,255),10);
+        }
+
+        ++it3;
+    }
+    //point_list(point_lists,point_lists_);
+    for (int j = 0; j <= 7; j++)
+    {
+        cv::line(M2, point_lists[j], point_lists[(j + 1) % 4], cv::Scalar(0,0,255), 1);
+
+    }
+    int num;
+    num++;
+    std::strstream ss;
+    ss<<num;
+    std::string name;
+    ss>>name;
+    cv::imshow(name,M2);
+    num++;
+    ss<<num;
+    ss>>name;
+    cv::imshow(name,M);
+    cv::waitKey();
+    int len = sizeof(point_lists)/sizeof(point_lists[0]);
+    if(len<=0)
+    {
+        std::cout<<"没有检测到杆塔"<<std::endl;
+        return;
+    }
+    std::vector<pcl::PointXYZ> point_o_s;
+    pcl::PointXYZ point_o_;
+    for (size_t k = 0; k < pointCloudPtr_o->points.size (); ++k) //显示所有的点
+    {
+        cv::Point2f point_t;
+        point_t.x=pointCloudPtr_o->points[k].x-min.x;
+        point_t.y=pointCloudPtr_o->points[k].y-min.y;
+        if(!isContain(point_lists[0],point_lists[1],point_lists[2],point_lists[3],point_t)&&
+                !isContain(point_lists[4],point_lists[5],point_lists[6],point_lists[7],point_t))
+       {     point_o_=pointCloudPtr_o->points[k];
+        if(point_o_.x!=0||point_o_.y!=0||point_o_.z!=0)
+        {
+            point_o_s.push_back(point_o_);
+        }}
+    }
+    int count = point_o_s.size();
+    pointCloudPtr_o2->resize(count);
+    pointCloudPtr_o2->width = count;
+    pointCloudPtr_o2->height = 1;
+    pointCloudPtr_o2->is_dense = false;
+    for(int i=0;i<point_o_s.size();i++)
+    {
+
+        pointCloudPtr_o2->points[i].x = point_o_s[i].x;
+        pointCloudPtr_o2->points[i].y = point_o_s[i].y;
+        pointCloudPtr_o2->points[i].z = point_o_s[i].z;
+        //pointCloudPtr_o2->points[i].r = 255;
+
+    }
+}
+
+int find_tower( pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1,
+                pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_o_,pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_o_1)
+{
+    float bckgr_gray_level = 0.0;  // Black
+    float txt_gray_lvl = 1.0 - bckgr_gray_level;
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_o(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_o1(new pcl::PointCloud<pcl::PointXYZ>());
+
+    cloud_mutex.lock();    // for not overwriting the point cloud
+
+    // Display pointcloud:
+    pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZ> handler_z (cloud, "z");
+    pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZ> handler_z1 (cloud1, "z");
+
+
+    //viewer->addPointCloud (cloud, handler_z, "cloud_z");
+    //viewer->addPointCloud(cloud, "bunny");
+    //viewer->setCameraPosition(0, 0, -2, 0, -1, 0, 0);
+    viewer->addPointCloud(cloud, handler_z, "cloud_v1", vp_1);
+    viewer->addPointCloud(cloud1, handler_z1, "cloud_v2", vp_2);
+    // Add point position callback
+    //viewer->registerMouseCallback (mouseEventOccurred, (void*)viewer.get ());
+    // Add point picking callback to viewer:
+    struct callback_args cb_args;
+    callback_args_key_board cb_args_key;
+    PointCloudT::Ptr clicked_points_3d(new PointCloudT);
+    PointCloudT::Ptr clicked_points_3d1(new PointCloudT);
+
+    cb_args.cloud = cloud;
+    cb_args.cloud1 = cloud1;
+    cb_args.clicked_points_3d = clicked_points_3d;
+    cb_args.clicked_points_3d1 = clicked_points_3d1;
+    cb_args.viewerPtr = pcl::visualization::PCLVisualizer::Ptr(viewer);
+
+    cb_args_key.clicked_points_3d = clicked_points_3d;
+    cb_args_key.clicked_points_3d1 = clicked_points_3d1;
+    cb_args_key.viewerPtr = pcl::visualization::PCLVisualizer::Ptr(viewer);
+
+    viewer->registerPointPickingCallback(pp_callback, (void*)&cb_args);
+    viewer->registerKeyboardCallback (keyboardEventOccurred, (void*)&cb_args_key);
+
+    std::cout << "Shift+click on tower points, then press 'Q' to continue" << std::endl;
+
+    // Spin until 'Q' is pressed:
+    viewer->spin();
+    viewer->removePointCloud("clicked_points1");
+    viewer->removePointCloud("clicked_points2");
+
+    if(indices_.empty()||indices_.size()<2)
+    {
+        std::cout<<"没有选择足够的杆塔点"<<std::endl;
+    }
+
+//    pcl::visualization::PointCloudColorHandlerCustom<PointT> cloud_tr_color_h1(cloud, 255, 255, 255);
+
+//    viewer->removePointCloud("cloud_v1", vp_1);
+//    viewer->removePointCloud("cloud_v2", vp_2);
+//    viewer->addPointCloud(cloud_o, cloud_tr_color_h1, "cloud_v1", vp_1);
+
+//    pcl::visualization::PointCloudColorHandlerCustom<PointT> cloud_icp_color_h1(cloud1, 20, 180, 20);
+//    viewer->addPointCloud(cloud_o1, cloud_icp_color_h1, "cloud_v2", vp_2);
+//    viewer->spin();
+
+    std::cout << "done." << std::endl;
+
+    cv::Point2f point_L[2];
+    point_L[0].x=cloud->points.at(indices_[indices_.size()-4]).x;
+    point_L[0].y=cloud->points.at(indices_[indices_.size()-4]).y;
+    point_L[1].x=cloud->points.at(indices_[indices_.size()-3]).x;
+    point_L[1].y=cloud->points.at(indices_[indices_.size()-3]).y;
+    td_tower_process(cloud,point_L,cloud_o_);
+    cv::Point2f point_L1[2];
+    point_L1[0].x=cloud1->points.at(indices_[indices_.size()-2]).x;
+    point_L1[0].y=cloud1->points.at(indices_[indices_.size()-2]).y;
+    point_L1[1].x=cloud1->points.at(indices_[indices_.size()-1]).x;
+    point_L1[1].y=cloud1->points.at(indices_[indices_.size()-1]).y;
+    td_tower_process(cloud1,point_L1,cloud_o_1);
+
+    viewer->removePointCloud("cloud_v1", vp_1);
+    viewer->removePointCloud("cloud_v2", vp_2);
+
+    // 点云1显示为绿色
+    pcl::visualization::PointCloudColorHandlerCustom<PointT> cloud_tr_color_h(cloud_o_, 255, 255, 255);
+    viewer->addPointCloud(cloud_o_, cloud_tr_color_h, "cloud_tr_v1", vp_1);
+
+    // 点云2显示为白色
+    pcl::visualization::PointCloudColorHandlerCustom<PointT> cloud_icp_color_h(cloud_o_1, 20, 180, 20);
+    viewer->addPointCloud(cloud_o_1, cloud_icp_color_h, "cloud_icp_v1", vp_2);
+    pcl::io::savePCDFileBinary("line1.pcd",*cloud_o_);
+    pcl::io::savePCDFileBinary("line2.pcd",*cloud_o_1);
+//    //pcl::visualization::PointCloudColorHandlerCustom<PointT> cloud_tr_color_h1(cloud, 255, 255, 255);
+
+//    viewer->addPointCloud(cloud, cloud_tr_color_h1, "cloud_v1", vp_2);
+
+//    //pcl::visualization::PointCloudColorHandlerCustom<PointT> cloud_icp_color_h1(cloud1, 20, 180, 20);
+//    viewer->addPointCloud(cloud1, cloud_icp_color_h1, "cloud_v2", vp_2);
+
+
+    // 设置背景颜色
+    viewer->setBackgroundColor(bckgr_gray_level, bckgr_gray_level, bckgr_gray_level, vp_1);
+    viewer->setBackgroundColor(bckgr_gray_level, bckgr_gray_level, bckgr_gray_level, vp_2);
+    //viewer_("1",cloud_o_);
+    //viewer_("2",cloud_o_1);
+    // 设置相机的坐标和方向
+    //viewer->setCameraPosition(0, 0, 1, 0, 0, 0, 0);
+
+    //  viewer->addPointCloud(cloud_o_,handler_z,"cloud_o_");
+    viewer->spin();
+
+    //viewer_("1",cloud_o_);
+    //viewer->updatePointCloud(*cloud_o_,"viewer");
+    cloud_mutex.unlock();
+    /* while (!viewer->wasStopped())
+    {
+        //viewer->updatePointCloud<pcl::PointXYZ>(cloud_o,"viewer");
+        viewer->spinOnce(100);
+        boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+    }*/
+    return 0;
+}
+using pcl::visualization::PointCloudColorHandlerGenericField;
+using pcl::visualization::PointCloudColorHandlerCustom;
+int main()
+{
+    viewer->createViewPort(0.0, 0.0, 0.5, 1.0, vp_1);
+    viewer->createViewPort(0.5, 0.0, 1.0, 1.0, vp_2);
+    viewer->setSize(1280, 1024);  // 可视化窗口的大小
+
+    std::string filename("/home/ysl/图片/训练文件/gantaline.pcd");
+    std::string filename1("/home/ysl/图片/训练文件/gantaline.pcd");
+
+    viewer->addText (filename, 10, 10, "v1 text", vp_1);
+    viewer->addText (filename1, 10, 10, "v2 text", vp_2);
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1(new pcl::PointCloud<pcl::PointXYZ>());
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_t(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1_t(new pcl::PointCloud<pcl::PointXYZ>());
+
+    if (pcl::io::loadPCDFile(filename, *cloud))
+    {
+        std::cerr << "ERROR: Cannot open file " << filename << "! Aborting..." << std::endl;
+        return 0;
+    }
+    //从点云中移除NAN点也就是无效点
+    std::vector<int> indices;
+    pcl::removeNaNFromPointCloud(*cloud,*cloud, indices);
+    std::cout << "Loaded " << cloud->points.size() << " data points from "<<filename<< std::endl;
+
+    if (pcl::io::loadPCDFile(filename1, *cloud1))
+    {
+        std::cerr << "ERROR: Cannot open file " << filename1 << "! Aborting..." << std::endl;
+        return 0;
+    }
+    //从点云中移除NAN点也就是无效点
+    std::vector<int> indices1;
+    pcl::removeNaNFromPointCloud(*cloud1,*cloud1, indices1);
+    std::cout << "Loaded " << cloud1->points.size() << " data points from "<<filename1<< std::endl;
+
+
+    // viewer->addCoordinateSystem (1.0);
+
+    find_tower(cloud,cloud1,cloud_t,cloud1_t);
+
+    viewer->removePointCloud ("cloud_tr_v1");
+    viewer->removePointCloud ("cloud_icp_v1");
+
+//    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_t1(new pcl::PointCloud<pcl::PointXYZ>());
+//    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1_t1(new pcl::PointCloud<pcl::PointXYZ>());
+//    PointCloudColorHandlerCustom<pcl::PointXYZ> src_h (cloud_t, 255, 255, 255);
+//    PointCloudColorHandlerCustom<pcl::PointXYZ> tgt_h (cloud1_t, 20, 180, 20);
+
+//    pcl::copyPointCloud(*cloud_t,*cloud_t1);
+//    pcl::copyPointCloud(*cloud1_t,*cloud1_t1);
+//    cloud_t1->resize(cloud_t->size());
+//    cloud_t1->width = cloud_t->size();
+//    cloud_t1->height = 1;
+//    cloud_t1->is_dense = false;
+
+//    cloud1_t1->resize(cloud1_t->size());
+//    cloud1_t1->width = cloud1_t->size();
+//    cloud1_t1->height = 1;
+//    cloud1_t1->is_dense = false;
+//    pcl::io::savePCDFileBinary("line1",*cloud_t1);
+//    pcl::io::savePCDFileBinary("line2.pcd",*cloud1_t1);
+
+//    viewer->addPointCloud (cloud_t, src_h, "cloud_tr_v1", vp_1);
+//    viewer->addPointCloud (cloud1_t, tgt_h, "cloud_icp_v1", vp_1);
+}
+

@@ -1,0 +1,1267 @@
+//
+// Created by ethan on 18-6-26.
+//
+#include <iostream>
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/common/common.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/io/pcd_io.h>
+#include <liblas/liblas.hpp>
+#include <pcl/visualization/point_cloud_color_handlers.h>
+#include <iostream>
+
+// PCL specific includes
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/console/print.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <iostream>
+#include <pcl/point_types.h>
+#include <pcl/filters/passthrough.h>
+#include <iostream>
+#include <pcl/ModelCoefficients.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/project_inliers.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/point_types.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/passthrough.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/filters/radius_outlier_removal.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <Eigen/Core>
+#include <pcl/common/transforms.h>
+#include <pcl/common/common.h>
+#include <pcl/common/time.h>
+#include <pcl/common/angles.h>
+#include <pcl/registration/transformation_estimation_svd.h>
+
+#include <pcl/ModelCoefficients.h>
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <fstream>
+#include <iosfwd>
+#include <math.h>
+#include <iomanip>
+#include"stdlib.h"
+#include "iostream"
+#include "string"
+#include <iostream>
+#include <pcl/visualization/cloud_viewer.h>
+#include<pcl/io/pcd_io.h>
+#include<pcl/point_types.h>
+#include <pcl/conversions.h>
+#include <pcl/features/normal_3d.h>
+#include <boost/thread/thread.hpp>
+#include <pcl/common/common_headers.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/console/parse.h>
+#include <pcl/filters/statistical_outlier_removal.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/common/impl/io.hpp>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <pcl/common/transforms.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/io/pcd_io.h>
+#include <liblas/liblas.hpp>
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/common/common.h>
+#include <opencv2/opencv.hpp>
+#include <opencv/cv.h>
+#include <strstream>
+#include <iostream>
+#include <sys/types.h>
+#include <dirent.h>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <string.h>
+#include <stdio.h>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include<opencv2/imgproc/imgproc.hpp>
+#include<iostream>
+#include"math.h"
+#include <list>
+using namespace std;
+
+void GetPointMap(pcl::PointCloud<pcl::PointXYZL>::Ptr &pointCloudPtr,cv::Mat &Map)
+{
+    int width;
+    int height;
+
+    pcl::PointXYZL min;
+    pcl::PointXYZL max;
+    pcl::getMinMax3D(*pointCloudPtr,min,max);
+    width=int(max.x-min.x);
+    height=int(max.y-min.y);
+    Map=cv::Mat::zeros(height+1,width+1,CV_8UC1);
+    for (size_t k = 0; k < pointCloudPtr->points.size (); ++k) //显示所有的点
+    {
+        int j=int(pointCloudPtr->points[k].x-min.x);
+        int i=int(pointCloudPtr->points[k].y-min.y);
+        Map.at<uchar>(i,j)+=1;
+    }
+
+}
+void GetPointMaptoImage(cv::Mat &Map,cv::Mat &image)
+{
+
+    double minv = 0.0, maxv = 0.0;
+    double* minp = &minv;
+    double* maxp = &maxv;
+
+    cv::minMaxIdx(Map,minp,maxp);
+    // 创建与原图像等尺寸的图像
+    image=cv::Mat::zeros(Map.rows,Map.cols,CV_8UC1);
+    int nr=Map.rows;
+
+    int nl=Map.cols;
+    for(int k=0;k<nr;k++)
+    {
+        // 每一行图像的指针
+        const uchar* inData=Map.ptr<uchar>(k);
+        uchar* outData=image.ptr<uchar>(k);
+        for(int i=0;i<nl;i++)
+        {
+            outData[i]=(inData[i]-minv)/(maxv-minv)*255;
+        }
+    }
+
+}
+// 计算叉乘 |P0P1| × |P0P2|
+double Multiply(cv::Point p1, cv::Point p2, cv::Point p0)
+{
+    return ((p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y));
+}
+
+bool isContain(cv::Point mp1,cv::Point mp2,cv::Point mp3,cv::Point mp4,cv::Point mp)
+{
+    if (Multiply(mp, mp1, mp2) * Multiply(mp,mp4, mp3) <= 0
+
+            && Multiply(mp, mp4, mp1) * Multiply(mp, mp3, mp2) <= 0)
+        return true;
+
+    return false;
+}
+void cutcloud(pcl::PointCloud<pcl::PointXYZL>::Ptr &pointCloudPtr1,cv::Point2f point_lists[],
+              pcl::PointCloud<pcl::PointXYZL>::Ptr &cloud,
+              pcl::PointCloud<pcl::PointXYZL>::Ptr &cloud1)
+{
+    pcl::PointXYZL max;
+    pcl::PointXYZL min;
+    std::vector<pcl::PointXYZL> points;
+    std::vector<pcl::PointXYZL> towerpoints;
+
+    pcl::getMinMax3D(*pointCloudPtr1,min,max);
+    pcl::PointXYZL point_o_;
+    for (size_t k = 0; k < pointCloudPtr1->points.size (); ++k) //显示所有的点
+    {
+        cv::Point2f point_t;
+        point_t.x=pointCloudPtr1->points[k].x-min.x;
+        point_t.y=pointCloudPtr1->points[k].y-min.y;
+        point_o_=pointCloudPtr1->points[k];
+        //point_lists[0],point_lists[1],point_lists[3],point_lists[2]
+        if(isContain(point_lists[0],point_lists[1],point_lists[2],point_lists[3],point_t))
+        {
+            if(point_o_.x!=0||point_o_.y!=0||point_o_.z!=0)
+            {
+                towerpoints.push_back(point_o_);
+            }
+        }else
+        {
+            if(point_o_.x!=0||point_o_.y!=0||point_o_.z!=0)
+            {
+                points.push_back(point_o_);
+            }
+        }
+    }
+
+    cloud->resize(towerpoints.size());
+    cloud->width = towerpoints.size();
+    cloud->height = 1;
+    cloud->is_dense = false;
+    for(int i=0;i<towerpoints.size();i++)
+    {
+        cloud->points[i]=towerpoints[i];
+    }
+
+    cloud1->resize(points.size());
+    cloud1->width = points.size();
+    cloud1->height = 1;
+    cloud1->is_dense = false;
+    for(int i=0;i<points.size();i++)
+    {
+        cloud1->points[i]=points[i];
+    }
+
+    //    pointCloudPtr1->points.clear();
+    points.clear();
+    towerpoints.clear();
+}
+void cutcloud(pcl::PointCloud<pcl::PointXYZL>::Ptr &pointCloudPtr1,cv::Point2f point_lists[],
+              pcl::PointCloud<pcl::PointXYZL>::Ptr &cloud)
+{
+    pcl::PointXYZL max;
+    pcl::PointXYZL min;
+    std::vector<pcl::PointXYZL> points;
+    std::vector<pcl::PointXYZL> towerpoints;
+
+    pcl::getMinMax3D(*pointCloudPtr1,min,max);
+    pcl::PointXYZL point_o_;
+    for (size_t k = 0; k < pointCloudPtr1->points.size (); ++k) //显示所有的点
+    {
+        cv::Point2f point_t;
+        point_t.x=pointCloudPtr1->points[k].x-min.x;
+        point_t.y=pointCloudPtr1->points[k].y-min.y;
+        point_o_=pointCloudPtr1->points[k];
+        //point_lists[0],point_lists[1],point_lists[3],point_lists[2]
+        if(isContain(point_lists[0],point_lists[1],point_lists[2],point_lists[3],point_t))
+        {
+            if(point_o_.x!=0||point_o_.y!=0||point_o_.z!=0)
+            {
+                towerpoints.push_back(point_o_);
+            }
+        }
+    }
+
+    cloud->resize(towerpoints.size());
+    cloud->width = towerpoints.size();
+    cloud->height = 1;
+    cloud->is_dense = false;
+    for(int i=0;i<towerpoints.size();i++)
+    {
+        cloud->points[i]=towerpoints[i];
+    }
+    towerpoints.clear();
+}
+void get_point_function(float point_cen,float &point_re,int k,int L,int num)
+{
+    if(num==1)
+        point_re=point_cen+(L*k)/(2*sqrt(k*k+1));
+    if(num==2)
+        point_re=point_cen-(L*k)/(2*sqrt(k*k+1));
+    if(num==3)
+        point_re=point_cen+L/(2*sqrt(k*k+1));
+    if(num==4)
+        point_re=point_cen-L/(2*sqrt(k*k+1));
+}
+void get_up_down_point(cv::Point2f point_cen,cv::Point2f &point_up,cv::Point2f &point_down,int k,int L,bool flag)
+{
+    if(flag){
+        get_point_function(point_cen.y,point_down.y,k,L,1);
+        get_point_function(point_cen.y,point_up.y,k,L,2);
+        if(k<0)
+        {
+            get_point_function(point_cen.x,point_down.x,k,L,4);
+            get_point_function(point_cen.x,point_up.x,k,L,3);
+        }
+        else {
+            get_point_function(point_cen.x,point_down.x,k,L,3);
+            get_point_function(point_cen.x,point_up.x,k,L,4);
+        }}
+    else{
+        get_point_function(point_cen.x,point_down.x,k,L,1);
+        get_point_function(point_cen.x,point_up.x,k,L,2);
+        if(k>0)
+        {
+            get_point_function(point_cen.y,point_down.y,k,L,4);
+            get_point_function(point_cen.y,point_up.y,k,L,3);
+        }
+        else
+        {
+            get_point_function(point_cen.y,point_down.y,k,L,3);
+            get_point_function(point_cen.y,point_up.y,k,L,4);
+        }
+    }
+}
+
+void resetpoint(cv::Point2f rect_point[],cv::Point2f center,cv::Point2f rect_point1[])
+{
+    std::vector<cv::Point2f> rp;
+    std::vector<cv::Point2f> lp;
+    for(int i=0;i<4;i++)
+    {
+        if(center.x<rect_point[i].x)
+            rp.push_back(rect_point[i]);
+        else lp.push_back(rect_point[i]);
+    }
+    for(int i=0;i<2;i++)
+    {
+        if(center.y<lp[i].y)
+            rect_point1[3]=lp[i];
+        else rect_point1[0]=lp[i];
+        if(center.y<rp[i].y)
+            rect_point1[2]=rp[i];
+        else rect_point1[1]=rp[i];
+    }
+}
+void GetHeightDiff(pcl::PointCloud<pcl::PointXYZL>::Ptr cloud,double &diffz,double &diff)
+{
+    pcl::PointXYZL max;
+    pcl::PointXYZL min;
+    pcl::getMinMax3D(*cloud,min,max);
+    diffz=max.z-min.z;
+    double diffx=max.x-min.x;
+    double diffy=max.y-min.y;
+    diff=cloud->size()/(diffx*diffy*diffz);
+}
+void ChangeLabe(pcl::PointCloud<pcl::PointXYZL>::Ptr cloud,double label)
+{
+    cloud->resize(cloud->size());
+    cloud->height=1;
+    cloud->width=cloud->size();
+    cloud->is_dense=false;
+    for(int i=0;i<cloud->size();i++)
+    {
+        cloud->points[i].label=label;
+    }
+}
+double Getpointhd(pcl::PointCloud<pcl::PointXYZL>::Ptr cloud)
+{
+    double height=0;
+    for(int i=0;i<cloud->size();i++)
+    {
+        height+=cloud->points[i].z;
+    }
+    return height;
+}
+double Getdistance(cv::Point2f point1,cv::Point2f point2)
+{
+    return sqrt(pow(point1.x-point2.x,2)+pow(point1.y-point2.y,2));
+}
+void viewer_cloud(std::string name,pcl::PointCloud<pcl::PointXYZL>::Ptr pointCloudPtr,std::string type_)
+{
+    pcl::visualization::PCLVisualizer p ("viewer");
+
+    std::cerr << "PointCloudColorHandlerGenericField demo." << std::endl;
+    pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZL> handler_z (pointCloudPtr, type_);
+
+    p.addPointCloud (pointCloudPtr, handler_z, name);
+    p.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 10, name);
+    p.spin ();
+    p.removePointCloud (name);
+}
+double convertStringToDouble(const std::string &s)
+{
+    double val;
+    std::strstream ss;
+    ss << s;
+    ss >> val;
+    return val;
+}
+bool judge(std::vector<int> contourid,int num)
+{
+    for(int i=0;i<contourid.size();i++)
+    {
+        if(contourid[i]==num)
+            return false;
+    }
+    return true;
+}
+struct Maps{
+    std::vector<int> rows;
+    std::vector<int> cols;
+    std::vector<int> gray;
+};
+void GetAltitudeMap(pcl::PointCloud<pcl::PointXYZL>::Ptr &pointCloudPtr,cv::Mat &Map)
+{
+    int width;
+    int height;
+
+    pcl::PointXYZL min;
+    pcl::PointXYZL max;
+    pcl::getMinMax3D(*pointCloudPtr,min,max);
+    width=int(max.x-min.x);
+    height=int(max.y-min.y);
+    Maps MAP;
+    for(int i=0;i<pointCloudPtr->points.size();i++)
+    {
+
+        if(int((pointCloudPtr->points[i].z-min.z)/(max.z-min.z)*255)>255)
+            MAP.gray.push_back(255);
+        else MAP.gray.push_back(int((pointCloudPtr->points[i].z-min.z)/(max.z-min.z)*255));
+    }
+    Map=cv::Mat::zeros(height,width,CV_8UC1);
+    for (size_t k = 0; k < pointCloudPtr->points.size (); ++k) //显示所有的点
+    {
+        int j=int(pointCloudPtr->points[k].x-min.x);
+        int i=int(pointCloudPtr->points[k].y-min.y);
+        Map.at<uchar>(i,j)=MAP.gray[k];
+    }
+}
+int canny(cv::Mat &Img_gray,cv::Mat &Nms)
+{
+    cv::Mat Img_in  , Img_out;
+    cv::Mat scr;
+    /* Img_in=imread("lenna.jpg");
+  int rows=Img_in.rows;min
+  int cols=Img_in.cols;//获取图像尺寸
+
+  cvtColor(Img_in,Img_gray,CV_BGR2GRAY);
+  imshow("【灰度图】",Img_gray);//转化为灰度图
+ */
+    int rows=Img_gray.rows;
+    int cols=Img_gray.cols;
+    //step1:高斯平滑
+    cv::Mat img_filt;
+    cv::GaussianBlur(Img_gray,Img_out,cv::Size(3,3),0,0);
+    //adaptiveThreshold(img_filt , Img_out , 255 ,ADAPTIVE_THRESH_MEAN_C , THRESH_BINARY,min(rows,cols), 0);
+    //imshow("【二值图】",Img_out );
+    Img_out.convertTo(Img_out,CV_32FC1); //将图像转换为float或double型，否则算梯度会报错
+
+    /*step2:计算梯度（幅度和方向）
+  选择一阶差分卷积模板：
+  dx=[-1,-1;1,1] dy=[1,-1;1,-1]
+ */
+    cv::Mat gy=(cv::Mat_<char>(2,2)<<1,-1,
+                1,-1);
+    //定义一阶差分卷积梯度模板
+    cv::Mat gx=(cv::Mat_<char>(2,2)<<-1,-1,
+                1,1); //定义一阶差分卷积梯度模板
+    cv::Mat img_gx , img_gy , img_g ;//定义矩阵
+    cv::Mat img_dir=cv::Mat::zeros(rows , cols , CV_32FC1);//定义梯度方向矩阵,计算角度为float型
+
+    cv::filter2D(Img_out, img_gx , Img_out.depth(), gx);  //获取x方向的梯度图像.使用梯度模板进行二维卷积,结果与原图像大小相同
+    cv::filter2D(Img_out, img_gy , Img_out.depth(), gy);  //获取x方向的梯度图像.使用梯度模板进行二维卷积,结果与原图像大小相同
+    img_gx=img_gx.mul(img_gx);//点乘（每个像素值平方）
+    img_gy=img_gy.mul(img_gy);//点乘（每个像素值平方）
+    img_g=img_gx+img_gy;
+    sqrt(img_g, img_g); //梯度幅值图像
+
+    //求梯度方向图像
+    for(int i=0;i<rows; i++)
+    {
+        for(int j=0 ; j<cols; j++)
+        {
+            img_dir.at<float>(i,j)=cv::fastAtan2(img_gy.at<float>(i,j) , img_gx.at<float>(i,j));//求角度
+        }
+    }
+
+
+    /* step3:对梯度幅值进行非极大值抑制
+首先将角度划分成四个方向范围:水平(0°)、45°、垂直(90°)、135°
+*/
+    Nms=cv::Mat::zeros(rows , cols , CV_32FC1);//定义一个非极大值抑制图像，float型
+    for(int i=0;i<rows; i++)
+    {
+        for(int j=0 ; j<cols; j++)
+        {
+            if(img_dir.at<float>(i,j) <=22.5 && img_dir.at<float>(i,j)>=0 || img_dir.at<float>(i,j) >=157.5 && img_dir.at<float>(i,j)<=202.5
+                    || img_dir.at<float>(i,j)>=337.5 && img_dir.at<float>(i,j)<=360)
+                img_dir.at<float>(i,j)=0;
+
+            else if(img_dir.at<float>(i,j)>22.5 && img_dir.at<float>(i,j)<=67.5 || img_dir.at<float>(i,j)>202.5 && img_dir.at<float>(i,j)<=247.5)
+                img_dir.at<float>(i,j)=45;
+            else if(img_dir.at<float>(i,j)>67.5 && img_dir.at<float>(i,j)<=112.5 || img_dir.at<float>(i,j)>247.5 && img_dir.at<float>(i,j)<=292.5)
+                img_dir.at<float>(i,j)=90;
+            else if(img_dir.at<float>(i,j)>112.5 && img_dir.at<float>(i,j)<157.5 || img_dir.at<float>(i,j)>292.5 && img_dir.at<float>(i,j)<337.5)
+                img_dir.at<float>(i,j)=135;
+        }
+    }
+
+    for(int i=1;i<rows-1; i++)
+    {
+        for(int j=1; j<cols-1; j++)
+        {
+            if ( img_dir.at<float>(i,j) == 90 && img_g.at<float>(i,j) == max(img_g.at<float>(i,j), max(img_g.at<float>(i,j+1), img_g.at<float>(i,j-1))))
+                Nms.at<float>(i,j) = img_g.at<float>(i,j);
+            else if ( img_dir.at<float>(i,j) == 45 && img_g.at<float>(i,j) == max(img_g.at<float>(i,j),max(img_g.at<float>(i-1,j+1), img_g.at<float>(i+1,j-1))))
+                Nms.at<float>(i,j) = img_g.at<float>(i,j);
+            else if( img_dir.at<float>(i,j) == 0 && img_g.at<float>(i,j) == max(img_g.at<float>(i,j),max( img_g.at<float>(i-1,j), img_g.at<float>(i+1,j))))
+                Nms.at<float>(i,j) = img_g.at<float>(i,j);
+            else if ( img_dir.at<float>(i,j) == 135 && img_g.at<float>(i,j) == max(img_g.at<float>(i,j),max(img_g.at<float>(i-1,j-1), img_g.at<float>(i+1,j+1))))
+                Nms.at<float>(i,j) = img_g.at<float>(i,j);
+        }
+    }
+
+    /*step4:双阈值检测和连接边缘
+*/
+    cv::Mat img_dst=cv::Mat::zeros(rows , cols , CV_32FC1);//定义一个双阈值图像，float型
+    double TH,TL;
+    double maxVal=0;//必须为double类型，且必须赋初值，否则报错
+    Nms.convertTo(Nms,CV_64FC1); //为了计算，将非极大值抑制图像转为double型
+    cv::minMaxLoc( Nms ,NULL, &maxVal,NULL,NULL); //求矩阵 Nms最大值
+    TH=0.3*maxVal ;//高阈值
+    TL=0.1*maxVal;//低阈值
+
+    for(int i=0;i<rows; i++)
+    {
+        for(int j=0 ; j<cols; j++)
+        {
+            if( Nms.at<double>(i,j)<TL)
+                img_dst.at<float>(i,j)=0;
+            else if( Nms.at<double>(i,j)>TH)
+                img_dst.at<float>(i,j)=1;
+            else if(Nms.at<double>(i-1,j-1)<TL || Nms.at<double>(i-1,j)<TL || Nms.at<double>(i-1,j+1)<TL ||
+                    Nms.at<double>(i,j-1)<TL|| Nms.at<double>(i,j+1)<TL || Nms.at<double>(i+1,j-1)<TL ||
+                    Nms.at<double>(i+1,j)<TL || Nms.at<double>(i+1,j+1)<TL)
+                img_dst.at<float>(i,j)=1;
+        }
+    }
+    //imshow("非极大值抑制图",Nms);
+    //imshow(" 边缘检测图", img_dst);
+    //imwrite(" 边缘检测效果图.jpg",img_dst);//保存图像
+    //waitKey(0);
+    return 0;
+}
+void findbounds(pcl::PointCloud<pcl::PointXYZL>::Ptr cloud,pcl::PointCloud<pcl::PointXYZL>::Ptr &VertexCloud,pcl::PointCloud<pcl::PointXYZL>::Ptr cloudcrood,Eigen::Vector3f &c)
+{
+    typedef pcl::PointXYZL PointType;
+
+    Eigen::Vector4f pcaCentroid;
+    pcl::compute3DCentroid(*cloud, pcaCentroid);
+    Eigen::Matrix3f covariance;
+    pcl::computeCovarianceMatrixNormalized(*cloud, pcaCentroid, covariance);
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> eigen_solver(covariance, Eigen::ComputeEigenvectors);
+    Eigen::Matrix3f eigenVectorsPCA = eigen_solver.eigenvectors();
+    Eigen::Vector3f eigenValuesPCA = eigen_solver.eigenvalues();
+    eigenVectorsPCA.col(2) = eigenVectorsPCA.col(0).cross(eigenVectorsPCA.col(1)); //校正主方向间垂直
+    eigenVectorsPCA.col(0) = eigenVectorsPCA.col(1).cross(eigenVectorsPCA.col(2));
+    eigenVectorsPCA.col(1) = eigenVectorsPCA.col(2).cross(eigenVectorsPCA.col(0));
+
+    //    std::cout << "特征值va(3x1):\n" << eigenValuesPCA << std::endl;
+    //    std::cout << "特征向量ve(3x3):\n" << eigenVectorsPCA << std::endl;
+    //    std::cout << "质心点(4x1):\n" << pcaCentroid << std::endl;
+    /*
+    // 另一种计算点云协方差矩阵特征值和特征向量的方式:通过pcl中的pca接口，如下，这种情况得到的特征向量相似特征向量
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloudPCAprojection (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PCA<pcl::PointXYZ> pca;
+    pca.setInputCloud(cloudSegmented);
+    pca.project(*cloudSegmented, *cloudPCAprojection);
+    std::cerr << std::endl << "EigenVectors: " << pca.getEigenVectors() << std::endl;//计算特征向量
+    std::cerr << std::endl << "EigenValues: " << pca.getEigenValues() << std::endl;//计算特征值
+    */
+    Eigen::Matrix4f tm = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4f tm_inv = Eigen::Matrix4f::Identity();
+    tm.block<3, 3>(0, 0) = eigenVectorsPCA.transpose();   //R.
+    tm.block<3, 1>(0, 3) = -1.0f * (eigenVectorsPCA.transpose()) *(pcaCentroid.head<3>());//  -R*t
+    tm_inv = tm.inverse();
+
+    //    std::cout << "变换矩阵tm(4x4):\n" << tm << std::endl;
+    //    std::cout << "逆变矩阵tm'(4x4):\n" << tm_inv << std::endl;
+
+    pcl::PointCloud<PointType>::Ptr transformedCloud(new pcl::PointCloud<PointType>);
+    pcl::transformPointCloud(*cloud, *transformedCloud, tm);
+
+    PointType min_p1, max_p1;
+    Eigen::Vector3f c1;
+    pcl::getMinMax3D(*transformedCloud, min_p1, max_p1);
+    c1 = 0.5f*(min_p1.getVector3fMap() + max_p1.getVector3fMap());
+
+
+    Eigen::Affine3f tm_inv_aff(tm_inv);
+    pcl::transformPoint(c1, c, tm_inv_aff);
+    std::cout << "型心c(3x1):\n" << c << std::endl;
+
+    Eigen::Vector3f whd, whd1;
+    whd1 = max_p1.getVector3fMap() - min_p1.getVector3fMap();
+    whd = whd1;
+    float sc1 = (whd1(0) + whd1(1) + whd1(2)) / 3;  //点云平均尺度，用于设置主方向箭头大小
+
+    //    std::cout << "width1=" << whd1(0) << endl;
+    //    std::cout << "heght1=" << whd1(1) << endl;
+    //    std::cout << "depth1=" << whd1(2) << endl;
+    //    std::cout << "scale1=" << sc1 << endl;
+
+    const Eigen::Quaternionf bboxQ1(Eigen::Quaternionf::Identity());
+    const Eigen::Vector3f    bboxT1(c1);
+    const Eigen::Quaternionf bboxQ(tm_inv.block<3, 3>(0, 0));
+    const Eigen::Vector3f    bboxT(c);
+
+    //变换到原点的点云主方向
+    PointType op;
+    op.x = 0.0;
+    op.y = 0.0;
+    op.z = 0.0;
+    Eigen::Vector3f px, py, pz;
+    Eigen::Affine3f tm_aff(tm);
+    pcl::transformVector(eigenVectorsPCA.col(0), px, tm_aff);
+    pcl::transformVector(eigenVectorsPCA.col(1), py, tm_aff);
+    pcl::transformVector(eigenVectorsPCA.col(2), pz, tm_aff);
+    PointType pcaX;
+    pcaX.x = sc1 * px(0);
+    pcaX.y = sc1 * px(1);
+    pcaX.z = sc1 * px(2);
+    PointType pcaY;
+    pcaY.x = sc1 * py(0);
+    pcaY.y = sc1 * py(1);
+    pcaY.z = sc1 * py(2);
+    PointType pcaZ;
+    pcaZ.x = sc1 * pz(0);
+    pcaZ.y = sc1 * pz(1);
+    pcaZ.z = sc1 * pz(2);
+
+
+    cloudcrood->width = 3;
+    cloudcrood->height = 1;
+    cloudcrood->is_dense = false;
+    cloudcrood->points.resize(cloudcrood->width * cloudcrood->height);
+    //初始点云的主方向
+    PointType cp;
+    cp.x = pcaCentroid(0);
+    cp.y = pcaCentroid(1);
+    cp.z = pcaCentroid(2);
+    PointType pcX;
+    pcX.x = sc1 * eigenVectorsPCA(0, 0) + cp.x;
+    pcX.y = sc1 * eigenVectorsPCA(1, 0) + cp.y;
+    pcX.z = sc1 * eigenVectorsPCA(2, 0) + cp.z;
+    PointType pcY;
+    pcY.x = sc1 * eigenVectorsPCA(0, 1) + cp.x;
+    pcY.y = sc1 * eigenVectorsPCA(1, 1) + cp.y;
+    pcY.z = sc1 * eigenVectorsPCA(2, 1) + cp.z;
+    PointType pcZ;
+    pcZ.x = sc1 * eigenVectorsPCA(0, 2) + cp.x;
+    pcZ.y = sc1 * eigenVectorsPCA(1, 2) + cp.y;
+    pcZ.z = sc1 * eigenVectorsPCA(2, 2) + cp.z;
+
+    cloudcrood->points.push_back(pcX);
+    cloudcrood->points.push_back(pcY);
+    cloudcrood->points.push_back(pcZ);
+
+    //Rectangular vertex
+    pcl::PointCloud<PointType>::Ptr transVertexCloud(new pcl::PointCloud<PointType>);//存放变换后点云包围盒的6个顶点
+    transVertexCloud->width = 6;
+    transVertexCloud->height = 1;
+    transVertexCloud->is_dense = false;
+    transVertexCloud->points.resize(transVertexCloud->width * transVertexCloud->height);
+    transVertexCloud->points[0].x = max_p1.x;
+    transVertexCloud->points[0].y = max_p1.y;
+    transVertexCloud->points[0].z = max_p1.z;
+    transVertexCloud->points[1].x = max_p1.x;
+    transVertexCloud->points[1].y = max_p1.y;
+    transVertexCloud->points[1].z = min_p1.z;
+    transVertexCloud->points[2].x = max_p1.x;
+    transVertexCloud->points[2].y = min_p1.y;
+    transVertexCloud->points[2].z = min_p1.z;
+    transVertexCloud->points[3].x = min_p1.x;
+    transVertexCloud->points[3].y = max_p1.y;
+    transVertexCloud->points[3].z = max_p1.z;
+    transVertexCloud->points[4].x = min_p1.x;
+    transVertexCloud->points[4].y = min_p1.y;
+    transVertexCloud->points[4].z = max_p1.z;
+    transVertexCloud->points[5].x = min_p1.x;
+    transVertexCloud->points[5].y = min_p1.y;
+    transVertexCloud->points[5].z = min_p1.z;
+    pcl::transformPointCloud(*transVertexCloud, *VertexCloud, tm_inv);
+
+    // 逆变换回来的角度
+    cout << whd1(0) << " "<< whd1(1) << " " << whd1(2) << endl;
+    auto euler = bboxQ1.toRotationMatrix().eulerAngles(0, 1, 2);
+    std::cout << "Euler from quaternion in roll, pitch, yaw"<< std::endl << euler/3.14*180 << std::endl<<std::endl;
+
+
+
+    //    //visualization
+    //    pcl::visualization::PCLVisualizer viewer;
+    //    pcl::visualization::PointCloudColorHandlerCustom<PointType> tc_handler(transformedCloud, 0, 255, 0); //设置点云颜色
+    //    //Visual transformed point cloud
+    //    viewer.addPointCloud(transformedCloud, tc_handler, "transformCloud");
+    //    viewer.addCube(bboxT1, bboxQ1, whd1(0), whd1(1), whd1(2), "bbox1");
+    //    viewer.setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_REPRESENTATION, pcl::visualization::PCL_VISUALIZER_REPRESENTATION_WIREFRAME, "bbox1");
+    //    viewer.setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0.0, 1.0, 0.0, "bbox1");
+
+    //    viewer.addArrow(pcaX, op, 1.0, 0.0, 0.0, false, "arrow_X");
+    //    viewer.addArrow(pcaY, op, 0.0, 1.0, 0.0, false, "arrow_Y");
+    //    viewer.addArrow(pcaZ, op, 0.0, 0.0, 1.0, false, "arrow_Z");
+
+    //    pcl::visualization::PointCloudColorHandlerCustom<PointType> color_handler(cloud, 255, 0, 0);
+    //    viewer.addPointCloud(cloud, color_handler, "cloud");
+    //    viewer.addCube(bboxT, bboxQ, whd(0), whd(1), whd(2), "bbox");
+    //    viewer.setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_REPRESENTATION, pcl::visualization::PCL_VISUALIZER_REPRESENTATION_WIREFRAME, "bbox");
+    //    viewer.setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1.0, 0.0, 0.0, "bbox");
+
+    //    viewer.addArrow(pcX, cp, 1.0, 0.0, 0.0, false, "arrow_x");
+    //    viewer.addArrow(pcY, cp, 0.0, 1.0, 0.0, false, "arrow_y");
+    //    viewer.addArrow(pcZ, cp, 0.0, 0.0, 1.0, false, "arrow_z");
+
+    //    //  viewer.addCoordinateSystem(0.5f*sc1);
+    //    viewer.setBackgroundColor(0.0, 0.0, 0.0);
+
+    //    viewer.addPointCloud(VertexCloud, "temp_cloud");
+    //    viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 10, "temp_cloud");
+    //    viewer.spin();
+
+}
+void cutlinecloud(pcl::PointCloud<pcl::PointXYZL>::Ptr cloud,
+                  std::vector<pcl::PointCloud<pcl::PointXYZL>> &boundcloud_two,
+                  std::vector<pcl::PointCloud<pcl::PointXYZL>> &cloud_o)
+{
+    cv::Point2f point_lists[4];
+    pcl::PointCloud<pcl::PointXYZL>::Ptr cloud_temp(new pcl::PointCloud<pcl::PointXYZL>());
+    for(int i=0;i<boundcloud_two.size()/2;i++)
+    {
+        pcl::PointXYZL max;
+        pcl::PointXYZL min;
+
+        pcl::getMinMax3D(*cloud,min,max);
+        pcl::PointXYZL point_o_;
+        for (size_t k = 0; k < cloud->points.size (); ++k) //显示所有的点
+        {
+            cv::Point2f point_t;
+            point_t.x=cloud->points[k].x;
+            point_t.y=cloud->points[k].y;
+            point_o_=cloud->points[k];
+            point_lists[0].x=boundcloud_two[2*i].points[3].x;
+            point_lists[0].y=boundcloud_two[2*i].points[3].y;
+            point_lists[1].x=boundcloud_two[2*i].points[2].x;
+            point_lists[1].y=boundcloud_two[2*i].points[2].y;
+            point_lists[2].x=boundcloud_two[2*i+1].points[1].x;
+            point_lists[2].y=boundcloud_two[2*i+1].points[1].y;
+            point_lists[3].x=boundcloud_two[2*i+1].points[0].x;
+            point_lists[3].y=boundcloud_two[2*i+1].points[0].y;
+
+            //point_lists[0],point_lists[1],point_lists[3],point_lists[2]
+            if(isContain(point_lists[0],point_lists[1],point_lists[2],point_lists[3],point_t))
+            {
+                if(point_o_.x!=0||point_o_.y!=0||point_o_.z!=0)
+                {
+                    cloud_temp->points.push_back(point_o_);
+                }
+            }
+        }
+
+        cloud_temp->resize(cloud_temp->size());
+        cloud_temp->width = cloud_temp->size();
+        cloud_temp->height = 1;
+        cloud_temp->is_dense = false;
+        cloud_o.push_back(*cloud_temp);
+    }
+}
+double distofcenter(Eigen::Vector3f c)
+{
+    return c(0)+c(1)+c(2);
+}
+std::vector<cv::Point2f> get_center(std::vector<cv::Point2f> Point4d)
+{
+    std::vector<cv::Point2f> pointcenter;
+    for(int i=0;i<Point4d.size()/4;i++)
+    {
+        cv::Point2f points((Point4d[0+i*4].x+Point4d[1+i*4].x)/2,(Point4d[0+i*4].y+Point4d[1+i*4].y)/2);
+        cv::Point2f pointx((Point4d[2+i*4].x+Point4d[3+i*4].x)/2,(Point4d[2+i*4].y+Point4d[3+i*4].y)/2);
+
+        cv::Point2f Pointc((points.x+pointx.x)/2,(points.y+pointx.y)/2);
+        pointcenter.push_back(Pointc);
+    }
+    return pointcenter;
+}
+void Getlineskb(std::vector<cv::Vec4i> lines,std::vector<cv::Vec6d> &lines_kb)
+{
+
+    //输入一堆直线，返回每条直线的斜率和截距
+    //Vec2f为2个点的float，参照存储直线的数据结构
+    double k = 0; //直线斜率
+    double b = 0; //直线截距
+    //std::vector <cv::Point2d> lines_kb;//直线斜率的反正切值
+    cv::Vec6d lines_kb_t;
+    for (unsigned int i = 0; i<lines.size(); i++)
+    {
+
+        k = (double)(lines[i][3] - lines[i][1]) / (double)(lines[i][2] - lines[i][0]); //求出直线的斜率// -3.1415926/2-----+3.1415926/2
+        b = (double)lines[i][1] - k * (double)lines[i][0]; //求出直线的斜率
+
+        lines_kb_t[0]=lines[i][0];
+        lines_kb_t[1]=lines[i][1];
+        lines_kb_t[2]=lines[i][2];
+        lines_kb_t[3]=lines[i][3];
+        lines_kb_t[4]=k;
+        lines_kb_t[5]=b;
+        lines_kb.push_back(lines_kb_t);
+    }
+
+}
+pcl::PointXYZL GetmaxzPoint(pcl::PointCloud<pcl::PointXYZL>::Ptr cloud)
+{
+    float z_max=0;
+    pcl::PointXYZL z_maxpoint;
+    for(int i=1;i<cloud->size();i++)
+    {
+        if(cloud->points[i].z>z_max)
+        {
+            z_maxpoint=cloud->points[i];
+            z_max=cloud->points[i].z;
+        }
+    }
+    return z_maxpoint;
+}
+class Grid//将一个栅格定义为一个类对象
+{
+public:
+    bool  road;//是不是路
+    float h_mean;//平均高度
+    float h_square;//高度方差
+    pcl::PointCloud<pcl::PointXYZL>::Ptr grid_cloud {new pcl::PointCloud<pcl::PointXYZL>};//指向栅格内的点云的指针
+    pcl::PointIndices::Ptr grid_inliers {new pcl::PointIndices};//栅格内点云索引的指针
+    int num;//点云点数
+    //std::vector<int> indices;//点云索引（定义了索引向量指针就不用定义它啦，因为后面想将得到的索引值赋给索引的时候，直接赋给*ptr就可以了）
+};
+int main(int argc,char **argv)
+{
+    pcl::PointCloud<pcl::PointXYZL>::Ptr lineAndtowers (new pcl::PointCloud<pcl::PointXYZL>());
+    pcl::PointCloud<pcl::PointXYZL>::Ptr grounds (new pcl::PointCloud<pcl::PointXYZL>());
+    pcl::PCDReader pcd1;
+    pcl::PCDReader pcd2;
+    std::string dir="/home/ysl/图片/点云文件/";
+    std::string name="6.04";
+    std::string names=name+".txt";
+
+    if (pcd1.read (name+"_lineAndtowers.pcd", *lineAndtowers) == -1||pcd2.read (name+"_grounds.pcd", *grounds) == -1)
+    {
+        int number =5;
+        // 读文件
+
+        ifstream inFile(dir+names, ios::in);
+        string lineStr;
+
+        vector<string> lineArray;
+        while (getline(inFile, lineStr))
+        {
+            // 打印整行字符串
+            // cout << lineStr << endl;
+            // 存成二维表结构
+            stringstream ss(lineStr);
+            string str;
+            // 按照逗号分隔
+            while (getline(ss, str, ' '))
+                lineArray.push_back(str);
+        }
+
+        pcl::PointXYZL lineAndtowerpoint;
+        pcl::PointXYZL groundpoint;
+        for(int i=0;i<lineArray.size()/number;i++)
+        {
+
+            if(convertStringToDouble(lineArray[number*i+4])==1)
+            {
+                lineAndtowerpoint.x=convertStringToDouble(lineArray[number*i]);
+                lineAndtowerpoint.y=convertStringToDouble(lineArray[number*i+1]);
+                lineAndtowerpoint.z=convertStringToDouble(lineArray[number*i+2]);
+                lineAndtowerpoint.label=convertStringToDouble(lineArray[number*i+4]);
+                lineAndtowers->points.push_back(lineAndtowerpoint);
+            }
+            if(convertStringToDouble(lineArray[number*i+4])==2)
+            {
+                groundpoint.x=convertStringToDouble(lineArray[number*i]);
+                groundpoint.y=convertStringToDouble(lineArray[number*i+1]);
+                groundpoint.z=convertStringToDouble(lineArray[number*i+2]);
+                groundpoint.label=convertStringToDouble(lineArray[number*i+4]);
+                grounds->points.push_back(groundpoint);
+            }
+        }
+        lineAndtowers->resize(lineAndtowers->size());
+        lineAndtowers->width=lineAndtowers->size();
+        lineAndtowers->height=1;
+        lineAndtowers->is_dense=false;
+
+        grounds->resize(grounds->size());
+        grounds->width=grounds->size();
+        grounds->height=1;
+        grounds->is_dense=false;
+        pcl::io::savePCDFileBinary(name+"_lineAndtowers.pcd",*lineAndtowers);
+        pcl::io::savePCDFileBinary(name+"_grounds.pcd",*grounds);
+    }
+
+    std::vector<pcl::PointCloud<pcl::PointXYZL>> towers;
+
+    cv::Mat Map;
+    cv::Mat Image;
+
+    std::vector<int> indices;
+    pcl::removeNaNFromPointCloud(*lineAndtowers, *lineAndtowers, indices);
+
+    // test.GetPointCloud(pointCloudPtr,t,pointCloudPtr1,pointCloudPtr2);
+    GetPointMap(lineAndtowers,Map);
+    GetPointMaptoImage(Map,Image);
+    //    GetAltitudeMap(lineAndtowers,Image);
+    cv::Mat drawImage=cv::Mat::zeros(Image.rows,Image.cols,CV_8UC1);
+
+    //获取自定义核
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5)); //第一个参数MORPH_RECT表示矩形的卷积核，当然还可以选择椭圆形的、交叉型的
+    //膨胀操作
+    cv::dilate(Image, Image, element);
+    //    cv::imshow("1",Image);
+    //    cv::waitKey(0);
+    cv::erode(Image, Image, element);
+    double minv = 0.0, maxv = 0.0;
+    double* minp = &minv;
+    double* maxp = &maxv;
+
+    cv::minMaxIdx(Image,minp,maxp);
+    cv::threshold(Image, Image,int(maxv/5), 255, cv::THRESH_OTSU);
+
+    //获取自定义核
+    element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(10, 5)); //第一个参数MORPH_RECT表示矩形的卷积核，当然还可以选择椭圆形的、交叉型的
+    // 膨胀操作
+    cv::dilate(Image, Image, element);
+
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(Image, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
+    cv::RotatedRect box; //定义最小外接矩形
+
+    pcl::PointCloud<pcl::PointXYZL>::Ptr line (new pcl::PointCloud<pcl::PointXYZL>);
+    pcl::PointCloud<pcl::PointXYZL>::Ptr tower (new pcl::PointCloud<pcl::PointXYZL>);
+
+    cv::Point2f rect_point[4];
+    std::vector<cv::Point2f> get_tower_rect_point;
+    std::vector<cv::Point2f> cpoints;
+    int num=1;
+    double diff=0;
+    double diffz=0;
+    double diff_sum=0;
+    double dist_num=10;
+    std::vector<int> contourid;
+
+    for (std::vector<std::vector<cv::Point>>::iterator itc = contours.begin(); itc!=contours.end(); itc++)
+    {
+        box = cv::minAreaRect(cv::Mat(*itc));
+        cpoints.push_back(box.center);
+    }
+    std::vector<cv::Point2f>::iterator itc_end=cpoints.end()-1;
+    for(std::vector<cv::Point2f>::iterator itc = cpoints.begin();itc!=itc_end; itc++)
+    {
+        for(std::vector<cv::Point2f>::iterator itc1 =itc+1;itc1!=cpoints.end(); itc1++)
+        {
+            double dist=Getdistance(*itc,*itc1);
+            //    std::cout<<dist<<std::endl;
+            if(dist<dist_num)
+            {
+                std::distance(cpoints.begin(),itc);
+                std::distance(cpoints.begin(),itc1);
+                if(judge(contourid,std::distance(cpoints.begin(),itc)))
+                    contourid.push_back(std::distance(cpoints.begin(),itc));
+                if(judge(contourid,std::distance(cpoints.begin(),itc1)))
+                    contourid.push_back(std::distance(cpoints.begin(),itc1));
+            }
+        }
+    }
+    std::vector<std::vector<cv::Point>>::iterator contours_itc = contours.begin();
+    std::vector<int>::iterator contours_id = contourid.end()-(contourid.size()/2);
+
+    //    for(std::vector<int>::iterator id = contourid.begin(); id!=contours_id; id=id+1)
+    //    {
+    //        int ids=std::distance(contourid.begin(),id);
+    //        contours[*(ids*2+id)].insert(contours[*(ids*2+id)].end(), contours[*(ids*2+id+1)].begin(), contours[*(ids*2+id)].end());
+    //        contours.erase(contours_itc+*(ids*2+id+1));
+    //    }
+    for(std::vector<int>::iterator id = contourid.begin(); id!=contours_id; id=id+1)
+    {
+        contours[(*id)*2+*id].insert(contours[(*id)*2+*id].end(), contours[(*id)*2+*id+1].begin(), contours[(*id)*2+*id+1].end());
+        contours.erase(contours_itc+(*id)*2+*id+1);
+    }
+    for (std::vector<std::vector<cv::Point>>::iterator itc = contours.begin(); itc!=contours.end(); itc++)
+    {
+
+        box = cv::minAreaRect(cv::Mat(*itc));  //计算每个轮廓最小外接矩形(旋转)
+
+        //boundRect = box.boundingRect();
+        //boundRect = boundingRect(Mat(*itc));
+        //cv::circle(Image, cv::Point(box.center.x, box.center.y), 5, cv::Scalar(255,255, 255), -1, 8);  //绘制最小外接矩形的中心点
+        // rectangle(dstImg, Point(boundRect.x, boundRect.y), Point(boundRect.x + boundRect.width, boundRect.y + boundRect.height), Scalar(0, 255, 0), 2, 8);
+        //cv::rectangle(Image, boundRect.tl(), boundRect.br() , cv::Scalar(255, 255, 255), 3, 8);
+        box.points(rect_point);  //把最小外接矩形四个端点复制给rect数组
+
+        cv::Point2f center=box.center;
+        resetpoint(rect_point,center,rect_point);
+
+        //        double K=(rect_point[0].y-rect_point[3].y)/(rect_point[0].x-rect_point[3].x);
+        //        double L_rl=20;
+        //        double L_ud=10;
+        //        //zuoyou
+        //        get_up_down_point(center,point1,point2,K,L_rl,false);
+        //        //shangxia
+        //        get_up_down_point(point1,rect_point[0],rect_point[3],K,L_ud,true);
+        //        get_up_down_point(point2,rect_point[1],rect_point[2],K,L_ud,true);
+
+        cutcloud(lineAndtowers,rect_point,tower,lineAndtowers);
+        GetHeightDiff(tower,diffz,diff);
+        double zsum=Getpointhd(tower);
+        diff_sum+=diff;
+        num++;
+        if(diffz>=15&&zsum>6000)
+        {
+            towers.push_back(*tower);
+            for (int j = 0; j<4; j++)
+                get_tower_rect_point.push_back(rect_point[j]);
+        }
+        else *lineAndtowers=*lineAndtowers+*tower;
+        //        for (int j = 0; j<4; j++)
+        //        {
+        //            cv::line(drawImage, get_tower_rect_point[j], get_tower_rect_point[(j + 1) % 4], cv::Scalar(255, 255, 255), 1, 8);  //绘制最小外接矩形每条边
+        //        }
+
+        //        std::cout << "angle " << i << " :" << box.angle << std::endl;
+        //        std::cout << "width " << i << " :" << box.size.width << std::endl;
+        //        std::cout << "height " << i << " :" << box.size.height << std::endl<<std::endl;
+    }
+    /////
+    ChangeLabe(lineAndtowers,1);
+    for(int i=0;i<towers.size();i++)
+        ChangeLabe(towers[i].makeShared(),0);
+    ///////
+    std::vector<cv::Point2f> tower_point_center=get_center(get_tower_rect_point);
+    std::vector<cv::Vec2i> id_two;
+
+    std::vector<double> k_s;
+    int id_num=0;
+    for(int i=0;i<tower_point_center.size()-1;i++)
+        for(int j=i+1;j<tower_point_center.size();j++)
+        {
+            double k=(tower_point_center[i].y-tower_point_center[j].y)/(tower_point_center[i].x-tower_point_center[j].x);
+
+            cv::Vec2i id;
+            id[0]=i;
+            id[1]=j;
+            id_num++;
+            id_two.push_back(id);
+
+            k_s.push_back(k);
+        }
+    for(int i=0;i<k_s.size();i++)
+        std::cout<<k_s[i]<<std::endl;
+    cv::Mat Map1;
+    cv::Mat Image1;
+    std::vector<cv::Vec6d> lines_kb;
+
+    GetPointMap(lineAndtowers,Map1);
+    GetPointMaptoImage(Map,Image1);
+    std::vector<cv::Vec4i> Lines;
+    cv::HoughLinesP(Image1, Lines, 1, CV_PI / 360, 200, 100, 10);
+    Getlineskb(Lines,lines_kb);
+
+    int count=0;
+    int maxcout=0;
+    double id_line_k=0;
+    for(int i=0;i<lines_kb.size()-1;i++)
+    {
+        for(int j=i+1;j<lines_kb.size();j++)
+        {
+            if(abs(lines_kb[i][4]-lines_kb[j][4])<1)
+                count++;
+
+        }
+        if(count>maxcout)
+        {
+            maxcout=count;
+            id_line_k=lines_kb[i][4];
+        }
+    }
+    std::cout<<id_line_k<<std::endl;
+
+    std::vector<cv::Point2f> get_tower_rect_points;
+
+    for(int i=0;i<k_s.size();i++)
+    {
+        if(abs(id_line_k-k_s[i])<0.1)
+        {
+
+            cv::circle(drawImage, tower_point_center[id_two[i][0]], 2, cv::Scalar(255, 255, 255), 1, 8);  //绘制最小外接矩形每条边
+            cv::circle(drawImage, tower_point_center[id_two[i][1]], 2, cv::Scalar(255, 255, 255), 1, 8);  //绘制最小外接矩形每条边
+
+            //id_two[i][0]
+            int id1=id_two[i][0];
+            int id2=id_two[i][1];
+            if((tower_point_center[id1].x+tower_point_center[id1].y)>(tower_point_center[id2].x+tower_point_center[id2].y))
+            {
+
+                get_tower_rect_points.push_back(get_tower_rect_point[1+id2*4]);
+                get_tower_rect_points.push_back(get_tower_rect_point[0+id2*4]);
+
+                get_tower_rect_points.push_back(get_tower_rect_point[3+id1*4]);
+                get_tower_rect_points.push_back(get_tower_rect_point[2+id1*4]);
+
+            }
+            else
+            {
+                get_tower_rect_points.push_back(get_tower_rect_point[1+id1*4]);
+                get_tower_rect_points.push_back(get_tower_rect_point[0+id1*4]);
+
+                get_tower_rect_points.push_back(get_tower_rect_point[3+id2*4]);
+                get_tower_rect_points.push_back(get_tower_rect_point[2+id2*4]);
+            }
+        }
+    }
+
+    pcl::PointCloud<pcl::PointXYZL>::Ptr linecloud(new pcl::PointCloud<pcl::PointXYZL>());
+    pcl::PointCloud<pcl::PointXYZL>::Ptr groundcloud(new pcl::PointCloud<pcl::PointXYZL>());
+
+    std::vector<pcl::PointCloud<pcl::PointXYZL>> lineclouds;
+    std::vector<pcl::PointCloud<pcl::PointXYZL>> groundclouds;
+
+    for (int j = 0; j<get_tower_rect_points.size()/4; j++)
+    {
+        cv::line(drawImage, get_tower_rect_points[0+j*4], get_tower_rect_points[1+j*4], cv::Scalar(255, 255, 255), 1, 8);  //绘制最小外接矩形每条边
+        cv::line(drawImage, get_tower_rect_points[1+j*4], get_tower_rect_points[2+j*4], cv::Scalar(255, 255, 255), 1, 8);  //绘制最小外接矩形每条边
+        cv::line(drawImage, get_tower_rect_points[2+j*4], get_tower_rect_points[3+j*4], cv::Scalar(255, 255, 255), 1, 8);  //绘制最小外接矩形每条边
+        cv::line(drawImage, get_tower_rect_points[3+j*4], get_tower_rect_points[0+j*4], cv::Scalar(255, 255, 255), 1, 8);  //绘制最小外接矩形每条边
+
+        cv::Point2f point_lists[4];
+        point_lists[0]=get_tower_rect_points[0+j*4];
+        point_lists[1]=get_tower_rect_points[1+j*4];
+        point_lists[2]=get_tower_rect_points[2+j*4];
+        point_lists[3]=get_tower_rect_points[3+j*4];
+        cutcloud(lineAndtowers,point_lists,linecloud);
+        cutcloud(grounds,point_lists,groundcloud);
+        groundclouds.push_back(*groundcloud);
+        lineclouds.push_back(*linecloud);
+        linecloud->clear();
+        groundcloud->clear();
+    }
+
+    std::vector<pcl::PointCloud<pcl::PointXYZL>> dangerclouds;
+    pcl::PointCloud<pcl::PointXYZL>::Ptr cloud_medium(new pcl::PointCloud<pcl::PointXYZL>());
+    pcl::PointCloud<pcl::PointXYZL>::Ptr cloud_danger(new pcl::PointCloud<pcl::PointXYZL>());
+
+    for(int i=0;i<lineclouds.size();i++)
+    {
+        //获取下x,y,z最大值
+        pcl::PointXYZL min;
+        pcl::PointXYZL max;
+        //        int gridx=10;
+        int gridy=10;
+        pcl::getMinMax3D(lineclouds[i],min,max);
+        //        int column= floor((max.x-min.x)/gridx);
+        int row= floor((max.y-min.y)/gridy);
+        Grid grid[row];
+        for (int m=0;m<lineclouds[i].points.size();m++)//这些点一个一个看
+        {
+            for(int jk=0;jk<row;jk++)
+            {
+                if(jk==0)
+                {
+                    if((lineclouds[i].points[m].y>=(min.y+jk*gridy))&&(lineclouds[i].points[m].y<=(min.y+jk*gridy+gridy)))
+                    {
+                        grid[jk].grid_cloud->points.push_back(lineclouds[i].points[m]);
+                    }
+                }
+                else
+                {
+                    if((lineclouds[i].points[m].y>(min.y+jk*gridy))&&(lineclouds[i].points[m].y<=(min.y+jk*gridy+gridy)))
+                    {
+                        grid[jk].grid_cloud->points.push_back(lineclouds[i].points[m]);
+                    }
+                }
+
+
+            }
+        }
+
+        Grid gridground[row];
+
+        for (int m=0;m<groundclouds[i].points.size();m++)//这些点一个一个看
+        {
+            for(int jk=0;jk<row;jk++)
+            {
+                if(jk==0)
+                {
+                    if((groundclouds[i].points[m].y>=(min.y+jk*gridy))&&(groundclouds[i].points[m].y<=(min.y+jk*gridy+gridy)))
+                    {
+                        gridground[jk].grid_cloud->points.push_back(groundclouds[i].points[m]);
+                    }
+                }
+                else
+                {
+                    if((groundclouds[i].points[m].y>(min.y+jk*gridy))&&(groundclouds[i].points[m].y<=(min.y+jk*gridy+gridy)))
+                    {
+                        gridground[jk].grid_cloud->points.push_back(groundclouds[i].points[m]);
+                    }
+                }
+
+
+            }
+        }
+        pcl::PointXYZL min_t;
+        pcl::PointXYZL max_t;
+
+        for(int i=0;i<row;i++)
+        {
+
+
+            pcl::getMinMax3D(*grid[i].grid_cloud,min_t,max_t);
+            pcl::PassThrough<pcl::PointXYZL> pass;  //创建滤波器对象
+            pass.setInputCloud (gridground[i].grid_cloud);                //设置待滤波的点云
+            pass.setFilterFieldName ("z");             //设置在Z轴方向上进行滤波
+            pass.setFilterLimits (min_t.z-5, min_t.z);             //设置滤波范围为0~1,在范围之外的点会被剪除
+            pass.filter (*cloud_medium);               //存储
+            pcl::PointXYZL point;
+
+            if(cloud_medium->size()>100)
+            {   point = GetmaxzPoint(cloud_medium);
+                cloud_danger->points.push_back(point);
+                cloud_medium->clear();
+            }
+            // *cloud_danger+=*cloud_medium;
+        }
+        cloud_danger->resize(cloud_danger->size());
+        cloud_danger->width=cloud_danger->size();
+        cloud_danger->height=1;
+        cloud_danger->is_dense=false;
+        dangerclouds.push_back(*cloud_danger);
+    }
+    for(int i=0;i<dangerclouds.size();i++)
+    {
+        if(dangerclouds[i].size()>0)
+        {
+          std::strstream ss;
+          ss<<i;
+          std::string number;
+          ss>>number;
+          pcl::io::savePCDFileASCII(name+"_dangercloud"+number+".pcd",*cloud_danger);
+        }
+    }
+    //std::cout<<dangerclouds[0].size()<<std::endl;
+    //viewer_cloud("1",dangerclouds[0].makeShared(),"z");
+    //viewer_cloud("2",groundclouds[0].makeShared(),"z");
+    for(int i=0;i<groundclouds.size();i++)
+    {
+        boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("viewer"));
+        pcl::visualization::PointCloudColorHandlerLabelField<pcl::PointXYZL> cloud_tgt (groundclouds[i].makeShared());
+        viewer->addPointCloud (groundclouds[i].makeShared(), cloud_tgt, "cloud_v2");
+        pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZL> handler_z (dangerclouds[i].makeShared(), "z");
+
+        viewer->addPointCloud (dangerclouds[i].makeShared(), handler_z, "name");
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 10, "name");
+        viewer->spin ();
+        viewer->removeAllPointClouds();
+    }
+    cv::imshow("1",drawImage);
+    cv::waitKey();
+    return 0;
+}
+
+
+

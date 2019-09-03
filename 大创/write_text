@@ -1,0 +1,79 @@
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <iomanip>
+//boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("viewer"));
+pcl::PointCloud<pcl::PointXYZ>::Ptr clicked_points_3d(new pcl::PointCloud<pcl::PointXYZ>);
+int num = 0;
+void remove_re_point(pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud)
+{
+    //int number=0;
+    pcl::PointCloud<pcl::PointXYZ>::iterator itr= cloud->points.begin();;
+    pcl::PointCloud<pcl::PointXYZ>::iterator itr1;
+    pcl::PointCloud<pcl::PointXYZ>::iterator itr_b;
+    while(itr !=--cloud->points.end())
+    {
+        itr1=itr;
+        itr_b=++itr1;
+        if(itr->x==itr_b->x&&itr->y==itr_b->y&&itr->z==itr_b->z)
+        {
+            itr = cloud->points.erase(itr);
+            //number++;
+        }
+        else
+            ++itr;
+    }
+    //std::cout<<number<<std::endl;
+
+}
+int main()
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr light(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr ground(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr line(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr tower(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr tree(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::io::loadPCDFile("/home/ysl/图片/训练文件/light/light.pcd", *light);
+    pcl::io::loadPCDFile("/home/ysl/图片/训练文件/ground/ground.pcd", *ground);
+    pcl::io::loadPCDFile("/home/ysl/图片/训练文件/line/line.pcd", *line);
+    pcl::io::loadPCDFile("/home/ysl/图片/训练文件/tower/tower.pcd", *tower);
+    pcl::io::loadPCDFile("/home/ysl/图片/训练文件/tree/tree.pcd", *tree);
+   // viewer->addPointCloud(cloud, "bunny");
+    remove_re_point(light);
+    remove_re_point(ground);
+    remove_re_point(line);
+    remove_re_point(tower);
+    remove_re_point(tree);
+  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> onekindcloud;
+  onekindcloud.push_back(light);
+  onekindcloud.push_back(ground);
+  onekindcloud.push_back(line);
+  onekindcloud.push_back(tower);
+  onekindcloud.push_back(tree);
+
+     char* path = "/home/ysl/图片/训练文件/test.txt"; // 你要创建文件的路径
+     ofstream fout(path);
+     if (fout) { // 如果创建成功
+      for (int i = 0; i < onekindcloud.size(); i++)
+      {
+       for(int j=0;j<onekindcloud[i]->points.size();j++)
+       {
+           fout <<std::setprecision(8)<<std::setfill('0')<<onekindcloud[i]->points[j].x<<" "<<onekindcloud[i]->points[j].y<<" "<<onekindcloud[i]->points[j].z<<" "<<i<<endl; // 使用与cout同样的方式进行写入
+       }
+
+      }
+
+      fout.close();  // 执行完操作后关闭文件句柄
+     }
+
+//    while (!viewer->wasStopped())
+//    {
+//        viewer->spin();
+//       // boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+//    }
+}
+

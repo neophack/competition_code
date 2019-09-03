@@ -1,0 +1,206 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include<strstream>
+#include <iomanip>
+
+using namespace std;
+double convertStringToDouble(const string &s)
+{
+    double val;
+    std::strstream ss;
+    ss << s;
+    ss >> val;
+    return val;
+}
+#include <iostream>
+#include <sys/types.h>
+#include <dirent.h>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <string.h>
+#include <stdio.h>
+int main()
+{
+    //读取txt
+    vector<string> file_name;
+    string path = "/home/ysl/图片/dianyun2/2018-05-21-17-05-57_label";
+
+    //读取文件名称
+    DIR *pDir;
+    struct dirent* ptr;
+    if(!(pDir = opendir(path.c_str())))
+        return 0;
+    while((ptr = readdir(pDir))!=0) {
+        if (strcmp(ptr->d_name, ".") != 0 && strcmp(ptr->d_name, "..") != 0)
+            file_name.push_back(path+"/"+ptr->d_name);  //文件路径被返回到file_name的vector中
+    }
+    closedir(pDir);
+
+    //读取每个txt文件数据，并计算平均值
+    for (int i = 0; i < file_name.size(); i++)
+    {
+        cout << file_name[i] << endl; //输出文件名
+
+        //读取txt，算值
+        string filename = file_name[i];
+        int number =6;
+        // 读文件
+        ifstream inFile(filename, ios::in);
+        string lineStr;
+        vector<string> lineArray;
+        while (getline(inFile, lineStr))
+        {
+            // 打印整行字符串
+            // cout << lineStr << endl;
+            // 存成二维表结构
+            stringstream ss(lineStr);
+            string str;
+            // 按照逗号分隔
+            while (getline(ss, str, ' '))
+                lineArray.push_back(str);
+        }
+        // 写文件
+        ofstream outFile0;
+
+        outFile0.open(filename+".txt", ios::out); // 打开模式可省略
+
+        for(int i=0;i<lineArray.size()/number;i++)
+        {
+        outFile0<<setiosflags(ios::fixed)<<setprecision(8)<<
+        convertStringToDouble(lineArray[number*i])<<' '<<
+        convertStringToDouble(lineArray[number*i+1])<<' '<<
+        convertStringToDouble(lineArray[number*i+2])<<' '<<
+        convertStringToDouble(lineArray[number*i+3])<<' '<<
+        convertStringToDouble(lineArray[number*i+5])<< endl;
+        }
+        outFile0.close();
+    }
+
+    return 0;
+}
+
+//int main()
+//{
+
+//int number =6;
+//    // 读文件
+//    ifstream inFile("/home/ysl/图片/dianyun2/2018-02-27-09-16-50 _label/2018-02-27-09-16-50 _label_000002.txt", ios::in);
+//    string lineStr;
+//    vector<string> lineArray;
+//    while (getline(inFile, lineStr))
+//    {
+//        // 打印整行字符串
+//       // cout << lineStr << endl;
+//        // 存成二维表结构
+//        stringstream ss(lineStr);
+//        string str;
+//        // 按照逗号分隔
+//        while (getline(ss, str, ' '))
+//         lineArray.push_back(str);
+//    }
+//    // 写文件
+//    ofstream outFile0;
+
+//    outFile0.open("/home/ysl/图片/dianyun2/2018-02-27-09-16-50 _label/000002.txt", ios::out); // 打开模式可省略
+
+//    for(int i=0;i<lineArray.size()/number;i++)
+//    {
+//        outFile0<<setiosflags(ios::fixed)<<setprecision(8)<<
+//        convertStringToDouble(lineArray[number*i])<<' '<<
+//        convertStringToDouble(lineArray[number*i+1])<<' '<<
+//        convertStringToDouble(lineArray[number*i+2])<<' '<<
+//        convertStringToDouble(lineArray[number*i+3])<<' '<<
+//        convertStringToDouble(lineArray[number*i+5])<< endl;
+//    }
+//    outFile0.close();
+//    return 0;
+//}
+//int main()
+//{
+
+//int number =6;
+//    // 读文件
+//    ifstream inFile("/home/ysl/图片/dianyun/2018-05-21-17-05-57_label.txt", ios::in);
+//    string lineStr;
+////113.1038568,23.67708879,12.6423
+//  /*  lon_lat_coord.x=113.1038568;
+//    lon_lat_coord.y=23.67708879;
+//    lon_lat_coord.z=12.6423;
+//    convert_lonlat_utm(lon_lat_coord,utm_coord);
+//    cout<<utm_coord.x<<" "<<utm_coord.y<<" "<<utm_coord.z<<endl;*/
+//    vector<string> lineArray;
+//    while (getline(inFile, lineStr))
+//    {
+//        // 打印整行字符串
+//       // cout << lineStr << endl;
+//        // 存成二维表结构
+//        stringstream ss(lineStr);
+//        string str;
+//        // 按照逗号分隔
+//        while (getline(ss, str, ' '))
+//         lineArray.push_back(str);
+//    }
+//    // 写文件
+//    ofstream outFile0;
+//    ofstream outFile1;
+//    ofstream outFile2;
+//    ofstream outFile3;
+//    ofstream outFile4;
+//    outFile0.open("/home/ysl/图片/dianyun/2018-05-21-17-05-57_label/0.txt", ios::out); // 打开模式可省略
+//    outFile1.open("/home/ysl/图片/dianyun/2018-05-21-17-05-57_label/1.txt", ios::out); // 打开模式可省略
+//    outFile2.open("/home/ysl/图片/dianyun/2018-05-21-17-05-57_label/2.txt", ios::out); // 打开模式可省略
+//    outFile3.open("/home/ysl/图片/dianyun/2018-05-21-17-05-57_label/3.txt", ios::out); // 打开模式可省略
+//    outFile4.open("/home/ysl/图片/dianyun/2018-05-21-17-05-57_label/4.txt", ios::out); // 打开模式可省略
+
+//    for(int i=0;i<lineArray.size()/number;i++)
+//    {
+//        if(convertStringToDouble(lineArray[number*i+4])==0)
+//        outFile0<<setiosflags(ios::fixed)<<setprecision(8)<<convertStringToDouble(lineArray[number*i])<<' '<<
+//        convertStringToDouble(lineArray[number*i+1])<<' '<<
+//        convertStringToDouble(lineArray[number*i+2])<<' '<<
+//        convertStringToDouble(lineArray[number*i+3])<<' '<<
+//        convertStringToDouble(lineArray[number*i+4])<< endl;
+
+//        if(convertStringToDouble(lineArray[number*i+4])==1)
+//        outFile1<<setiosflags(ios::fixed)<<setprecision(8)<<convertStringToDouble(lineArray[number*i])<<' '<<
+//        convertStringToDouble(lineArray[number*i+1])<<' '<<
+//        convertStringToDouble(lineArray[number*i+2])<<' '<<
+//        convertStringToDouble(lineArray[number*i+3])<<' '<<
+//        convertStringToDouble(lineArray[number*i+4])<< endl;
+
+//        if(convertStringToDouble(lineArray[number*i+4])==2)
+//        outFile2<<setiosflags(ios::fixed)<<setprecision(8)<<convertStringToDouble(lineArray[number*i])<<' '<<
+//        convertStringToDouble(lineArray[number*i+1])<<' '<<
+//        convertStringToDouble(lineArray[number*i+2])<<' '<<
+//        convertStringToDouble(lineArray[number*i+3])<<' '<<
+//        convertStringToDouble(lineArray[number*i+4])<< endl;
+
+//        if(convertStringToDouble(lineArray[number*i+4])==3)
+//        outFile3<<setiosflags(ios::fixed)<<setprecision(8)<<convertStringToDouble(lineArray[number*i])<<' '<<
+//        convertStringToDouble(lineArray[number*i+1])<<' '<<
+//        convertStringToDouble(lineArray[number*i+2])<<' '<<
+//        convertStringToDouble(lineArray[number*i+3])<<' '<<
+//        convertStringToDouble(lineArray[number*i+4])<< endl;
+
+//        if(convertStringToDouble(lineArray[number*i+4])==4)
+//        outFile4<<setiosflags(ios::fixed)<<setprecision(8)<<convertStringToDouble(lineArray[number*i])<<' '<<
+//        convertStringToDouble(lineArray[number*i+1])<<' '<<
+//        convertStringToDouble(lineArray[number*i+2])<<' '<<
+//        convertStringToDouble(lineArray[number*i+3])<<' '<<
+//        convertStringToDouble(lineArray[number*i+4])<< endl;
+//    }
+//    outFile0.close();
+//    outFile1.close();
+//    outFile2.close();
+//    outFile3.close();
+//    outFile4.close();
+//    return 0;
+//}
+

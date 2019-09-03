@@ -1,0 +1,169 @@
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/filters/voxel_grid.h>
+#include <iostream>
+#include <vector>
+
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/filters/extract_indices.h>
+
+#include <iostream>
+#include <vector>
+
+using namespace pcl;
+using namespace std;
+#define PointXYZL  PointXYZL
+class correctClouds {
+public:
+    correctClouds();
+    ~correctClouds(){}
+    void setInputCloud(pcl::PointCloud<pcl::PointXYZL>::Ptr cloud_);
+    pcl::PointCloud<pcl::PointXYZL>::Ptr  getclouds();
+    void simpleViewer();
+    void pp_callback(const pcl::visualization::AreaPickingEvent& event, void* args);
+    void keyboardEventOccurred(const pcl::visualization::KeyboardEvent& event, void* nothing);
+    void addlabel(pcl::PointCloud<pcl::PointXYZL>::Ptr &cloud,float label);
+
+protected:
+    // Point cloud data
+    pcl::PointCloud<pcl::PointXYZL>::Ptr cloud;
+    // The picked point
+    pcl::PointCloud<pcl::PointXYZL>::Ptr clicked_points_3d;
+    // The visualizer
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;
+    std::vector<std::vector< int >> cloud_indices;
+
+    bool flag=false;
+    int num = -1;
+};
+correctClouds::correctClouds()
+{
+    clicked_points_3d.reset(new pcl::PointCloud<PointXYZL>);
+    viewer.reset(new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    viewer->registerAreaPickingCallback(&correctClouds::pp_callback, *this);
+    //viewer->registerKeyboardCallback(&correctClouds::keyboardEventOccurred, (void*) this);
+    viewer->registerKeyboardCallback(&correctClouds::keyboardEventOccurred,*this);
+}
+void correctClouds::setInputCloud(PointCloud<PointXYZL>::Ptr cloud_)
+{
+    cloud = cloud_;
+}
+std::vector< int > sum_index(std::vector<std::vector< int >> cloud_index)
+{
+    std::vector<int> vec3;
+    for(int i=0;i<cloud_index.size();i++)
+    {
+        vec3.insert(vec3.end(),cloud_index[i].begin(),cloud_index[i].end());
+    }
+    return vec3;
+}
+PointCloud<PointXYZL>::Ptr correctClouds::getclouds()
+{
+    PointCloud<PointXYZL>::Ptr cloud_p(new PointCloud<PointXYZL>);
+    std::vector<int> sum_indexs=sum_index(cloud_indices);
+    for (int i = 0; i < sum_indexs.size(); ++i)
+    {
+        cloud_p->points.push_back(cloud->points.at(sum_indexs[i]));
+    }
+    return cloud_p;
+}
+void correctClouds::simpleViewer()
+{
+    // Visualizer
+    viewer->addPointCloud(cloud, "Cloud");
+    while (!viewer->wasStopped())
+    {
+        viewer->spinOnce(100);
+        boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+    }
+}
+void correctClouds::pp_callback(const pcl::visualization::AreaPickingEvent& event, void* args)
+{
+    std::vector< int > indices;
+
+    if (event.getPointsIndices(indices)==-1)
+        return;
+    cloud_indices.push_back(indices);
+    pcl::PointCloud<pcl::PointXYZL>::Ptr object_cloud (new pcl::PointCloud<pcl::PointXYZL>);
+
+    for (int i = 0; i < indices.size(); ++i)
+    {
+        clicked_points_3d->points.push_back(cloud->points.at(indices[i]));
+    }
+    //    clicked_points_3d[num]=*object_cloud;
+    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZL> red(clicked_points_3d, 255, 0, 0);
+
+    std::string cloudName;
+    std::stringstream ss;
+    num++;
+    ss << num;
+    ss >> cloudName;
+    cloudName += "_cloudName";
+    viewer->addPointCloud(clicked_points_3d, red, cloudName);
+    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 10, cloudName);
+    flag=true;
+}
+void correctClouds::keyboardEventOccurred(const pcl::visualization::KeyboardEvent& event, void* nothing){
+    if(event.getKeySym() == "space" && event.keyDown()&&flag){
+        if(num>-1)
+        {
+            std::string cloudName;
+            std::stringstream ss;
+            ss << num;
+            ss >> cloudName;
+            num--;
+            cloudName += "_cloudName";
+            clicked_points_3d->clear();
+            cloud_indices.pop_back();
+            viewer->removePointCloud(cloudName);
+        }
+    }
+}
+void correctClouds::addlabel(PointCloud<PointXYZL>::Ptr &cloud,float label)
+{
+    for(int i=0;i<cloud->size();i++)
+    {
+        cloud->points[i].label=label;
+    }
+}
+int main()
+{
+    PointCloud<pcl::PointXYZL>::Ptr cloud(new PointCloud<pcl::PointXYZL>());
+    PointCloud<pcl::PointXYZ>::Ptr cloud1(new PointCloud<pcl::PointXYZ>());
+
+    if (pcl::io::loadPCDFile("/home/ysl/大创/tools/5.pcd", *cloud1))
+    {
+        std::cerr << "ERROR: Cannot open file " << std::endl;
+        return 0;
+    }
+    copyPointCloud(*cloud1,*cloud);
+
+    correctClouds pickViewer;
+    pickViewer.setInputCloud(cloud); // A pointer to a cloud
+    pickViewer.simpleViewer();
+    PointCloud<pcl::PointXYZL>::Ptr pointSelected(new PointCloud<pcl::PointXYZL>());
+    pointSelected = pickViewer.getclouds();
+    std::string label;
+
+    std::cout<<"Enter cloud label"<<std::endl;
+    std::cin>>label;
+    int number;
+    std::istringstream iss (label);
+    iss >> number;
+    pickViewer.addlabel(pointSelected,number);
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewers(new pcl::visualization::PCLVisualizer("2"));
+    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZL> red(pointSelected, 255, 0, 0);
+    viewers->addPointCloud(pointSelected,red,"nem");
+        while (!viewers->wasStopped())
+        {
+            viewers->spinOnce(100);
+            boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+        }
+    return 0;
+}
+
